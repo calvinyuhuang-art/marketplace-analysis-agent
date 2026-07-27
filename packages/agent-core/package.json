@@ -1,0 +1,25 @@
+{
+  "name": "@maa/agent-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@maa/analysis": "workspace:*",
+    "@maa/artifacts": "workspace:*",
+    "@maa/audit": "workspace:*",
+    "@maa/capability-amazon-kdp": "workspace:*",
+    "@maa/contracts": "workspace:*",
+    "@maa/database": "workspace:*",
+    "@maa/evidence": "workspace:*",
+    "@maa/logging": "workspace:*",
+    "@maa/memory": "workspace:*"
+  }
+}

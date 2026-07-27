@@ -1,0 +1,42 @@
+{
+  "name": "@maa/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "migrate": "tsx src/migrate.ts",
+    "maa": "tsx src/cli.ts",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@maa/agent-core": "workspace:*",
+    "@maa/analysis": "workspace:*",
+    "@maa/artifacts": "workspace:*",
+    "@maa/audit": "workspace:*",
+    "@maa/capability-amazon-kdp": "workspace:*",
+    "@maa/contracts": "workspace:*",
+    "@maa/database": "workspace:*",
+    "@maa/evidence": "workspace:*",
+    "@maa/logging": "workspace:*",
+    "@maa/model-router": "workspace:*",
+    "@maa/quality": "workspace:*",
+    "@maa/memory": "workspace:*",
+    "@maa/learning": "workspace:*",
+    "@maa/wiki": "workspace:*",
+    "@maa/ops": "workspace:*",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "tsup": "^8.3.5"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@maa/contracts": ["packages/contracts/src/index.ts"],
+      "@maa/logging": ["packages/logging/src/index.ts"],
+      "@maa/artifacts": ["packages/artifacts/src/index.ts"],
+      "@maa/database": ["packages/database/src/index.ts"],
+      "@maa/audit": ["packages/audit/src/index.ts"],
+      "@maa/model-router": ["packages/model-router/src/index.ts"],
+      "@maa/agent-core": ["packages/agent-core/src/index.ts"],
+      "@maa/evidence": ["packages/evidence/src/index.ts"],
+      "@maa/capability-amazon-kdp": ["packages/capability-amazon-kdp/src/index.ts"],
+      "@maa/analysis": ["packages/analysis/src/index.ts"],
+      "@maa/quality": ["packages/quality/src/index.ts"],
+      "@maa/memory": ["packages/memory/src/index.ts"],
+      "@maa/learning": ["packages/learning/src/index.ts"],
+      "@maa/wiki": ["packages/wiki/src/index.ts"],
+      "@maa/client": ["packages/client/src/index.ts"],
+      "@maa/ops": ["packages/ops/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "apps/server/src/**/*.ts",
+    "fixtures/**/*.ts",
+    "e2e/**/*.ts",
+    "scripts/**/*.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["**/node_modules", "**/dist"]
+}

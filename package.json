@@ -1,0 +1,42 @@
+{
+  "name": "marketplace-analysis-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Marketplace Analysis Agent (MAA) - standalone, local-first, constrained marketplace intelligence service.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "concurrently -n server,console -c blue,magenta \"pnpm dev:server\" \"pnpm dev:console\"",
+    "dev:server": "pnpm --filter @maa/server dev",
+    "dev:console": "pnpm --filter @maa/console dev",
+    "start": "pnpm --filter @maa/server start",
+    "migrate": "pnpm --filter @maa/server migrate",
+    "maa": "pnpm --filter @maa/server maa",
+    "build": "pnpm --filter @maa/server build && pnpm --filter @maa/console build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:api": "vitest run --project api",
+    "test:e2e": "playwright test",
+    "clean": "pnpm -r exec rimraf dist"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^20.19.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.17.0",
+    "playwright": "^1.49.0",
+    "@playwright/test": "^1.49.0",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

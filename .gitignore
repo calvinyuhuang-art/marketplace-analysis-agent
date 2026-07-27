@@ -1,0 +1,29 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local-first runtime state (never committed)
+data/*
+!data/.gitkeep
+artifacts/*
+!artifacts/.gitkeep
+log/*
+!log/.gitkeep
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+.vitest/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
