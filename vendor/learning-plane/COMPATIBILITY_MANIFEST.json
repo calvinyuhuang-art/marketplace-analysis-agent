@@ -1,28 +1,39 @@
 {
-  "learningPlaneClientVersion": "0.8.1",
-  "learningPlaneContractsVersion": "0.8.1",
+  "learningPlaneClientVersion": "0.8.2",
+  "learningPlaneContractsVersion": "0.8.2",
   "learningPlaneApiCompat": "2026.07",
+  "learningPlaneServiceVersion": "0.8.2",
+  "schemaMigrationVersion": "0008",
   "supportedEnvelopeVersions": ["1.0"],
   "releasedWorkflowFeedbackPayloadVersions": {
     "workflow_feedback.created": "1.0",
     "workflow_feedback.resolution_submitted": "1.0",
     "workflow_feedback.resolution_evaluated": "1.0"
   },
-  "buildCommitOrSourceRevision": "8dd48034d303d9f447cd8c9c8f3205eac449fcd5",
+  "buildCommitOrSourceRevision": "e766ce6c47490c55eaa758a6d96311193ea04a20",
+  "builtAt": "2026-07-31T23:42:30.104Z",
+  "packageSha256": {
+    "contracts": "36e79ba05eb34e88a57d014ff3caac95d852bffff758c3aaa5d50f81c21ea196",
+    "client": "1fef73dcc159e9a1ba1ae986e9f9f757c8d5927a0a8b42224a8376a1199ce335"
+  },
   "artifacts": {
     "contracts": {
-      "version": "0.8.1",
-      "filename": "learning-plane-contracts-0.8.1.tgz",
-      "packageSha256": "8f93925ffafb2adc3b66bd1921070478422bdfacf0fb72957f86526b8de9880e"
+      "packageName": "@learning-plane/contracts",
+      "version": "0.8.2",
+      "fileName": "learning-plane-contracts-0.8.2.tgz",
+      "packageSha256": "36e79ba05eb34e88a57d014ff3caac95d852bffff758c3aaa5d50f81c21ea196"
     },
     "client": {
-      "version": "0.8.1",
-      "filename": "learning-plane-client-0.8.1.tgz",
-      "packageSha256": "b3ada763ab58c7762ed5ac4bc6f49fd415e415158def1c60bb0e34e183d4ead2"
+      "packageName": "@learning-plane/client",
+      "version": "0.8.2",
+      "fileName": "learning-plane-client-0.8.2.tgz",
+      "packageSha256": "1fef73dcc159e9a1ba1ae986e9f9f757c8d5927a0a8b42224a8376a1199ce335"
     }
   },
   "notes": [
-    "LP8-I4c consumes Learning Plane 0.8.1 productionBridge foundation.",
-    "Approval never activates. Replay eligibility never activates."
+    "LP8-I5c consumes Learning Plane 0.8.2 published-knowledge foundation.",
+    "Discovery does not create references. Reference is not adoption. Publication never activates rules.",
+    "Verify packageSha256 before install.",
+    "Do not copy package source trees by hand."
   ]
 }

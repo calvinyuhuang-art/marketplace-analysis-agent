@@ -5,8 +5,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@learning-plane/contracts': file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz
-  '@learning-plane/client': file:vendor/learning-plane/artifacts/learning-plane-client-0.8.1.tgz
+  '@learning-plane/contracts': file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz
+  '@learning-plane/client': file:vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz
 
 importers:
 
@@ -83,11 +83,11 @@ importers:
   apps/server:
     dependencies:
       '@learning-plane/client':
-        specifier: file:../../vendor/learning-plane/artifacts/learning-plane-client-0.8.1.tgz
-        version: file:vendor/learning-plane/artifacts/learning-plane-client-0.8.1.tgz
+        specifier: file:../../vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz
+        version: file:vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz(@learning-plane/contracts@file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz)
       '@learning-plane/contracts':
-        specifier: file:../../vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz
-        version: file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz
+        specifier: file:../../vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz
+        version: file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz
       '@maa/agent-core':
         specifier: workspace:*
         version: link:../../packages/agent-core
@@ -1111,13 +1111,15 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@learning-plane/client@file:vendor/learning-plane/artifacts/learning-plane-client-0.8.1.tgz':
-    resolution: {integrity: sha512-0mcfvF+H/xkGewFgtuod6CEspwAn0NkZqu+R22HKgO+Qq5OnZEuT+IiKBzK6K4tKHKXhE5lCR4k/P2yfhHWR4Q==, tarball: file:vendor/learning-plane/artifacts/learning-plane-client-0.8.1.tgz}
-    version: 0.8.1
+  '@learning-plane/client@file:vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz':
+    resolution: {integrity: sha512-KDfgM1GnRND4052oXOIZNw+pTE0XMBpqM46jLnCP7kT0yHoKScvnAScNP1vPG+hv4jlJiJso35SFGLLS/KpLQw==, tarball: file:vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz}
+    version: 0.8.2
+    peerDependencies:
+      '@learning-plane/contracts': file:C:\Tools and Agents\Marketplac_Analysis_Agent-lp8-i5c\vendor\learning-plane\artifacts\learning-plane-contracts-0.8.2.tgz
 
-  '@learning-plane/contracts@file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz':
-    resolution: {integrity: sha512-yx9Jj9rRfmb1Y/SRCiuZ+2KauLAl/c9/nRBLHGSYmEX1gbbaEGI8S/W8Dpd+m2sh40Qh5hZMU3J3yvwR6kfQtA==, tarball: file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz}
-    version: 0.8.1
+  '@learning-plane/contracts@file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz':
+    resolution: {integrity: sha512-9vwAgR7bQhKZM3K1G/CrYdYAD6CxdUV+1fubH6Lo3ZU8qU0WHpObdGlGyl+ke6fm7xiJjN0vW/1PV8QiEKKbHQ==, tarball: file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz}
+    version: 0.8.2
 
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
@@ -3269,12 +3271,12 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@learning-plane/client@file:vendor/learning-plane/artifacts/learning-plane-client-0.8.1.tgz':
+  '@learning-plane/client@file:vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz(@learning-plane/contracts@file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz)':
     dependencies:
-      '@learning-plane/contracts': file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz
+      '@learning-plane/contracts': file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz
       zod: 3.25.76
 
-  '@learning-plane/contracts@file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz':
+  '@learning-plane/contracts@file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz':
     dependencies:
       zod: 3.25.76
 
