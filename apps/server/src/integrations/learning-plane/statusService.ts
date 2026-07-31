@@ -4,6 +4,7 @@ import {
   declaredCapabilitiesForFlags,
   MAA_LP_REQUIRED_API_COMPAT,
   LP8_I3B_MILESTONE,
+  LP8_I4C_MILESTONE,
   publishModeStatus,
   receiveModeStatus,
   type LearningPlaneAdapterConfig
@@ -52,13 +53,19 @@ export function buildLearningPlaneStatus(input: {
     : {};
 
   const notes: string[] = [
-    "LP8-I3b production workflow-feedback adapter: created + evaluated publish; resolution_submitted receive."
+    "LP8-I3b production workflow-feedback adapter: created + evaluated publish; resolution_submitted receive.",
+    "LP8-I4c governance/replay bridge available behind feature flags (default off).",
+    "Approval does not activate. Replay eligibility does not activate."
   ];
   if (!config.publishEnabled) notes.push("Publish flag is off; no outbox capture.");
   if (!config.receiveEnabled) notes.push("Receive flag is off; callback rejects deliveries.");
+  if (!config.governanceBridgeEnabled) notes.push("Governance bridge flag is off.");
+  if (!config.replayBridgeEnabled) notes.push("Replay bridge flag is off.");
 
   return {
-    implementationMilestone: LP8_I3B_MILESTONE,
+    implementationMilestone: config.governanceBridgeEnabled
+      ? LP8_I4C_MILESTONE
+      : LP8_I3B_MILESTONE,
     enabled: config.enabled,
     publishEnabled: config.publishEnabled,
     receiveEnabled: config.receiveEnabled,
@@ -95,6 +102,17 @@ export function buildLearningPlaneStatus(input: {
     oldestPendingAgeSeconds: repo.tablesPresent() ? repo.oldestPendingAgeSeconds() : null,
     secretsPresent,
     packageIdentity: loadLearningPlanePackageIdentity(input.repoRoot),
+    bridgeFlags: {
+      governanceBridgeEnabled: config.governanceBridgeEnabled,
+      governancePublishEnabled: config.governancePublishEnabled,
+      governanceReceiveEnabled: config.governanceReceiveEnabled,
+      validationReceiptEnabled: config.validationReceiptEnabled,
+      activationReceiptEnabled: config.activationReceiptEnabled,
+      replayBridgeEnabled: config.replayBridgeEnabled,
+      replayExecuteEnabled: config.replayExecuteEnabled,
+      replayReportEnabled: config.replayReportEnabled,
+      grandfatherRegisterEnabled: config.grandfatherRegisterEnabled
+    },
     notes
   };
 }

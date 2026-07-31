@@ -38,7 +38,16 @@ export const CONFIG_PROFILE_DEFAULTS: Record<
     MAA_DEFAULT_MODEL_PROFILE: "mock-only",
     MAA_LEARNING_PLANE_ENABLED: "false",
     MAA_LEARNING_PLANE_PUBLISH_ENABLED: "false",
-    MAA_LEARNING_PLANE_RECEIVE_ENABLED: "false"
+    MAA_LEARNING_PLANE_RECEIVE_ENABLED: "false",
+    MAA_LEARNING_PLANE_GOVERNANCE_BRIDGE_ENABLED: "false",
+    MAA_LEARNING_PLANE_GOVERNANCE_PUBLISH_ENABLED: "false",
+    MAA_LEARNING_PLANE_GOVERNANCE_RECEIVE_ENABLED: "false",
+    MAA_LEARNING_PLANE_VALIDATION_RECEIPT_ENABLED: "false",
+    MAA_LEARNING_PLANE_ACTIVATION_RECEIPT_ENABLED: "false",
+    MAA_LEARNING_PLANE_REPLAY_BRIDGE_ENABLED: "false",
+    MAA_LEARNING_PLANE_REPLAY_EXECUTE_ENABLED: "false",
+    MAA_LEARNING_PLANE_REPLAY_REPORT_ENABLED: "false",
+    MAA_LEARNING_PLANE_GRANDFATHER_REGISTER_ENABLED: "false"
   }
 };
 
@@ -105,7 +114,18 @@ export const ConfigSchema = z.object({
   MAA_LEARNING_PLANE_SECRET_FILE: z
     .string()
     .min(1)
-    .default("./data/secrets/learning-plane-adapter.json")
+    .default("./data/secrets/learning-plane-adapter.json"),
+
+  /** LP8-I4c governance/replay bridge. All default off. */
+  MAA_LEARNING_PLANE_GOVERNANCE_BRIDGE_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_GOVERNANCE_PUBLISH_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_GOVERNANCE_RECEIVE_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_VALIDATION_RECEIPT_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_ACTIVATION_RECEIPT_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_REPLAY_BRIDGE_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_REPLAY_EXECUTE_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_REPLAY_REPORT_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_GRANDFATHER_REGISTER_ENABLED: booleanFromEnv.default(false)
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

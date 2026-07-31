@@ -20,6 +20,8 @@ import { typedProceduralRoutes } from "./typed-procedural";
 import { outcomeRoutes } from "./outcomes";
 import { learningPlaneIntegrationRoutes } from "../integrations/learning-plane/routes";
 import { learningPlaneCallbackRoutes } from "../integrations/learning-plane/callbackRoute";
+import { governanceCallbackRoutes } from "../integrations/learning-plane/governanceCallbackRoute";
+import { replayCallbackRoutes } from "../integrations/learning-plane/replayCallbackRoute";
 
 export function buildRoutes(container: Container): Router {
   const router = Router();
@@ -51,6 +53,24 @@ export function buildRoutes(container: Container): Router {
         reconciliation: container.learningPlane.reconciliation
       })
     );
+    if (container.learningPlane.governanceBridge) {
+      router.use(
+        governanceCallbackRoutes({
+          config: container.learningPlane.config,
+          secrets: container.learningPlane.secrets,
+          adapterRepo: container.learningPlane.repo,
+          bridge: container.learningPlane.governanceBridge
+        })
+      );
+      router.use(
+        replayCallbackRoutes({
+          config: container.learningPlane.config,
+          secrets: container.learningPlane.secrets,
+          adapterRepo: container.learningPlane.repo,
+          bridge: container.learningPlane.governanceBridge
+        })
+      );
+    }
   }
   return router;
 }

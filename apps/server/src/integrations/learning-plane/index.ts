@@ -1,5 +1,13 @@
 import type { Logger } from "@maa/logging";
-import type { SqliteDatabase, WorkflowFeedbackRepository } from "@maa/database";
+import type {
+  ProceduralRuleActivationsRepository,
+  ProceduralRuleDefinitionsRepository,
+  ProceduralRuleVersionsRepository,
+  SqliteDatabase,
+  WorkflowFeedbackRepository
+} from "@maa/database";
+import type { TypedProceduralService } from "@maa/learning";
+import type { Config } from "@maa/contracts";
 import { LearningPlaneAdapterRepository } from "./adapterRepository.js";
 import { bootstrapLearningPlaneAdapter } from "./bootstrap.js";
 import {
@@ -12,11 +20,13 @@ import { LearningPlaneRegistrationService } from "./registrationService.js";
 import { LearningPlaneSecretStore } from "./secretStore.js";
 import { buildLearningPlaneStatus } from "./statusService.js";
 import { probeLearningPlaneApiCompat } from "./clientFactory.js";
-import type { Config } from "@maa/contracts";
 import { WorkflowFeedbackLearningPlaneCapture } from "./workflowFeedbackCapture.js";
 import { LearningPlaneOutboxWorker } from "./outboxWorker.js";
 import { LearningPlaneAcknowledgementWorker } from "./acknowledgementWorker.js";
 import { LearningPlaneReconciliationWorker } from "./reconciliationWorker.js";
+import { GovernanceReplayBridgeRepository } from "./governanceReplayBridgeRepository.js";
+import { GovernanceBridgeService } from "./governanceBridgeService.js";
+import { GovernanceBridgeOutboxWorker } from "./governanceBridgeOutboxWorker.js";
 
 export type LearningPlaneAdapter = {
   config: LearningPlaneAdapterConfig;
@@ -26,6 +36,7 @@ export type LearningPlaneAdapter = {
   health: LearningPlaneHealthService;
   capture: WorkflowFeedbackLearningPlaneCapture;
   reconciliation: LearningPlaneReconciliationWorker;
+  governanceBridge: GovernanceBridgeService | null;
   getStatus: () => Promise<LearningPlaneStatusResponse>;
   bootstrap: (request: BootstrapRequest) => ReturnType<typeof bootstrapLearningPlaneAdapter>;
   reconcile: () => ReturnType<LearningPlaneRegistrationService["reconcile"]>;
@@ -42,6 +53,10 @@ export function createLearningPlaneAdapter(input: {
   serviceVersion: string;
   databaseSchemaVersion: string;
   logger: Logger;
+  typedProcedural?: TypedProceduralService;
+  versions?: ProceduralRuleVersionsRepository;
+  definitions?: ProceduralRuleDefinitionsRepository;
+  activations?: ProceduralRuleActivationsRepository;
 }): LearningPlaneAdapter {
   const config = resolveLearningPlaneAdapterConfig(input.rawConfig, input.repoRoot);
   const repo = new LearningPlaneAdapterRepository(input.db);
@@ -92,6 +107,37 @@ export function createLearningPlaneAdapter(input: {
     enabled: () => config.enabled && config.receiveEnabled
   });
 
+  const bridgeRepo = new GovernanceReplayBridgeRepository(input.db);
+  let governanceBridge: GovernanceBridgeService | null = null;
+  let govOutboxWorker: GovernanceBridgeOutboxWorker | null = null;
+  let replayTimer: NodeJS.Timeout | null = null;
+
+  if (
+    input.typedProcedural &&
+    input.versions &&
+    input.definitions &&
+    input.activations
+  ) {
+    governanceBridge = new GovernanceBridgeService({
+      config,
+      db: input.db,
+      bridge: bridgeRepo,
+      adapterRepo: repo,
+      typedProcedural: input.typedProcedural,
+      versions: input.versions,
+      definitions: input.definitions,
+      activations: input.activations
+    });
+    govOutboxWorker = new GovernanceBridgeOutboxWorker({
+      config,
+      bridge: bridgeRepo,
+      adapterRepo: repo,
+      secrets,
+      logger: input.logger,
+      enabled: () => config.enabled && config.governanceBridgeEnabled
+    });
+  }
+
   const syncFlagSettings = () => {
     if (!repo.tablesPresent() || !config.enabled) return;
     const existing = repo.getSettings();
@@ -122,6 +168,7 @@ export function createLearningPlaneAdapter(input: {
     health,
     capture,
     reconciliation,
+    governanceBridge,
     async getStatus() {
       let reachable: boolean | null = null;
       if (config.enabled) {
@@ -167,7 +214,9 @@ export function createLearningPlaneAdapter(input: {
           eventKind: "learning_plane.adapter_enabled",
           detail: {
             publishEnabled: config.publishEnabled,
-            receiveEnabled: config.receiveEnabled
+            receiveEnabled: config.receiveEnabled,
+            governanceBridgeEnabled: config.governanceBridgeEnabled,
+            replayBridgeEnabled: config.replayBridgeEnabled
           }
         });
       }
@@ -188,20 +237,47 @@ export function createLearningPlaneAdapter(input: {
             detail: { reason: "malformed" }
           });
         }
-        health.startHeartbeat();
-        outboxWorker.start();
-        ackWorker.start();
-        reconciliation.start();
       } else {
         repo.recordProcessingEvent({
           eventKind: "learning_plane.secret_missing",
           detail: { reason: "file_absent" }
         });
       }
+      // Workers may start before bootstrap; ticks no-op until secrets exist.
+      health.startHeartbeat();
+      outboxWorker.start();
+      ackWorker.start();
+      reconciliation.start();
+      govOutboxWorker?.start();
+      if (
+        governanceBridge &&
+        config.replayBridgeEnabled &&
+        config.replayExecuteEnabled
+      ) {
+        if (!replayTimer) {
+          replayTimer = setInterval(() => {
+            try {
+              governanceBridge?.executeAcceptedReplayJobs(3);
+            } catch {
+              /* non-blocking */
+            }
+          }, 1000);
+          replayTimer.unref?.();
+        }
+      }
     },
     async stop() {
+      if (replayTimer) {
+        clearInterval(replayTimer);
+        replayTimer = null;
+      }
       health.stopHeartbeat();
-      await Promise.all([outboxWorker.stop(), ackWorker.stop(), reconciliation.stop()]);
+      await Promise.all([
+        outboxWorker.stop(),
+        ackWorker.stop(),
+        reconciliation.stop(),
+        govOutboxWorker?.stop() ?? Promise.resolve()
+      ]);
     }
   };
 }
@@ -209,5 +285,7 @@ export function createLearningPlaneAdapter(input: {
 export * from "./config.js";
 export * from "./contracts.js";
 export * from "./callbackRoute.js";
+export * from "./governanceCallbackRoute.js";
+export * from "./replayCallbackRoute.js";
 export * from "./workflowFeedbackCapture.js";
 export * from "./workflowFeedbackMapping.js";

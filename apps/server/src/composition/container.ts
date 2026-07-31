@@ -83,9 +83,9 @@ import {
 } from "../integrations/learning-plane/index";
 
 export const SERVICE_NAME = "marketplace-analysis-agent";
-export const SERVICE_VERSION = "0.19.1";
+export const SERVICE_VERSION = "0.20.0";
 /** Highest migration version this binary ships (keep in sync with migrations/). */
-export const CURRENT_DATABASE_SCHEMA_VERSION = "0016";
+export const CURRENT_DATABASE_SCHEMA_VERSION = "0017";
 export interface Container {
   config: ResolvedConfig;
   instanceId: string;
@@ -616,7 +616,11 @@ export function createContainer(
     feedback: repos.workflowFeedback,
     serviceVersion: SERVICE_VERSION,
     databaseSchemaVersion,
-    logger: loggers.application
+    logger: loggers.application,
+    typedProcedural: typedProceduralService,
+    versions: repos.proceduralRuleVersions,
+    definitions: repos.proceduralRuleDefinitions,
+    activations: repos.proceduralRuleActivations
   });
   learningPlaneCaptureBridge.current = learningPlane.capture;
   // Adapter start never blocks MAA; failures are recorded as diagnostics.

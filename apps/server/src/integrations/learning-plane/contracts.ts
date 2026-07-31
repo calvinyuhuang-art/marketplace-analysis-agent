@@ -51,7 +51,7 @@ export type BootstrapRequest = {
 };
 
 export type LearningPlaneStatusResponse = {
-  implementationMilestone: "LP8-I3b";
+  implementationMilestone: "LP8-I3b" | "LP8-I4c";
   enabled: boolean;
   publishEnabled: boolean;
   receiveEnabled: boolean;
@@ -96,6 +96,17 @@ export type LearningPlaneStatusResponse = {
       contracts: string | null;
     };
     buildCommitOrSourceRevision: string | null;
+  };
+  bridgeFlags?: {
+    governanceBridgeEnabled: boolean;
+    governancePublishEnabled: boolean;
+    governanceReceiveEnabled: boolean;
+    validationReceiptEnabled: boolean;
+    activationReceiptEnabled: boolean;
+    replayBridgeEnabled: boolean;
+    replayExecuteEnabled: boolean;
+    replayReportEnabled: boolean;
+    grandfatherRegisterEnabled: boolean;
   };
   notes: string[];
 };

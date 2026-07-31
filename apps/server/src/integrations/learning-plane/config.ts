@@ -1,8 +1,10 @@
 import { resolve } from "node:path";
 import type { Config } from "@maa/contracts";
 import { API_COMPAT_VERSION as LP_API_COMPAT_VERSION } from "@learning-plane/contracts";
+import type { AgentCapability } from "@learning-plane/contracts";
 
 export const LP8_I3B_MILESTONE = "LP8-I3b" as const;
+export const LP8_I4C_MILESTONE = "LP8-I4c" as const;
 /** @deprecated use LP8_I3B_MILESTONE */
 export const LP8_I1_MILESTONE = LP8_I3B_MILESTONE;
 export const MAA_LP_ADAPTER_ID = "maa-learning-plane-adapter" as const;
@@ -22,6 +24,16 @@ export type LearningPlaneAdapterConfig = {
   secretFilePath: string;
   maaHost: string;
   maaPort: number;
+  /** LP8-I4c production bridge flags (all default off). */
+  governanceBridgeEnabled: boolean;
+  governancePublishEnabled: boolean;
+  governanceReceiveEnabled: boolean;
+  validationReceiptEnabled: boolean;
+  activationReceiptEnabled: boolean;
+  replayBridgeEnabled: boolean;
+  replayExecuteEnabled: boolean;
+  replayReportEnabled: boolean;
+  grandfatherRegisterEnabled: boolean;
 };
 
 export function resolveLearningPlaneAdapterConfig(
@@ -40,7 +52,16 @@ export function resolveLearningPlaneAdapterConfig(
     requestTimeoutMs: raw.MAA_LEARNING_PLANE_REQUEST_TIMEOUT_MS,
     secretFilePath: resolve(repoRoot, raw.MAA_LEARNING_PLANE_SECRET_FILE),
     maaHost: raw.MAA_HOST,
-    maaPort: raw.MAA_PORT
+    maaPort: raw.MAA_PORT,
+    governanceBridgeEnabled: raw.MAA_LEARNING_PLANE_GOVERNANCE_BRIDGE_ENABLED,
+    governancePublishEnabled: raw.MAA_LEARNING_PLANE_GOVERNANCE_PUBLISH_ENABLED,
+    governanceReceiveEnabled: raw.MAA_LEARNING_PLANE_GOVERNANCE_RECEIVE_ENABLED,
+    validationReceiptEnabled: raw.MAA_LEARNING_PLANE_VALIDATION_RECEIPT_ENABLED,
+    activationReceiptEnabled: raw.MAA_LEARNING_PLANE_ACTIVATION_RECEIPT_ENABLED,
+    replayBridgeEnabled: raw.MAA_LEARNING_PLANE_REPLAY_BRIDGE_ENABLED,
+    replayExecuteEnabled: raw.MAA_LEARNING_PLANE_REPLAY_EXECUTE_ENABLED,
+    replayReportEnabled: raw.MAA_LEARNING_PLANE_REPLAY_REPORT_ENABLED,
+    grandfatherRegisterEnabled: raw.MAA_LEARNING_PLANE_GRANDFATHER_REGISTER_ENABLED
   };
 }
 
@@ -48,21 +69,65 @@ export function agentPublicBaseUrl(config: LearningPlaneAdapterConfig): string {
   return `http://${config.callbackHost}:${config.maaPort}`;
 }
 
+type DeclaredCap =
+  | "health.report"
+  | "events.publish"
+  | "events.receive"
+  | "events.acknowledge"
+  | "procedural_change.propose"
+  | "governance.decision_receive"
+  | "local_validation.receipt_submit"
+  | "activation.receipt_submit"
+  | "rollback.receipt_submit"
+  | "replay.execute"
+  | "replay.status_submit"
+  | "replay.report_submit"
+  | "legacy_local.reference_register";
+
 /** Capabilities declared from accepted feature flags (implemented only). */
-export function declaredCapabilitiesForFlags(config: {
-  enabled: boolean;
-  publishEnabled: boolean;
-  receiveEnabled: boolean;
-}): Array<
-  "health.report" | "events.publish" | "events.receive" | "events.acknowledge"
-> {
+export function declaredCapabilitiesForFlags(
+  config: Pick<
+    LearningPlaneAdapterConfig,
+    | "enabled"
+    | "publishEnabled"
+    | "receiveEnabled"
+    | "governanceBridgeEnabled"
+    | "governancePublishEnabled"
+    | "governanceReceiveEnabled"
+    | "validationReceiptEnabled"
+    | "activationReceiptEnabled"
+    | "replayBridgeEnabled"
+    | "replayExecuteEnabled"
+    | "replayReportEnabled"
+    | "grandfatherRegisterEnabled"
+  >
+): DeclaredCap[] {
   if (!config.enabled) return [];
-  const caps: Array<
-    "health.report" | "events.publish" | "events.receive" | "events.acknowledge"
-  > = ["health.report"];
+  const caps: DeclaredCap[] = ["health.report"];
   if (config.publishEnabled) caps.push("events.publish");
   if (config.receiveEnabled) {
     caps.push("events.receive", "events.acknowledge");
+  }
+  if (config.governanceBridgeEnabled && config.governancePublishEnabled) {
+    caps.push("procedural_change.propose");
+  }
+  if (config.governanceBridgeEnabled && config.governanceReceiveEnabled) {
+    caps.push("governance.decision_receive");
+  }
+  if (config.governanceBridgeEnabled && config.validationReceiptEnabled) {
+    caps.push("local_validation.receipt_submit");
+  }
+  if (config.governanceBridgeEnabled && config.activationReceiptEnabled) {
+    caps.push("activation.receipt_submit", "rollback.receipt_submit");
+  }
+  if (config.replayBridgeEnabled && config.replayExecuteEnabled) {
+    caps.push("replay.execute", "replay.status_submit");
+  }
+  if (config.replayBridgeEnabled && config.replayReportEnabled) {
+    caps.push("replay.report_submit");
+  }
+  if (config.governanceBridgeEnabled && config.grandfatherRegisterEnabled) {
+    caps.push("legacy_local.reference_register");
   }
   return caps;
 }
@@ -84,4 +149,8 @@ export function receiveModeStatus(config: LearningPlaneAdapterConfig): {
 } {
   if (!config.enabled || !config.receiveEnabled) return { flag: false, status: "disabled" };
   return { flag: true, status: "active" };
+}
+
+export function asAgentCapabilities(caps: DeclaredCap[]): AgentCapability[] {
+  return caps as AgentCapability[];
 }

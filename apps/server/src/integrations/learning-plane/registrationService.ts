@@ -2,6 +2,7 @@ import { AppError, API_COMPAT_LABEL } from "@maa/contracts";
 import type { Logger } from "@maa/logging";
 import {
   declaredCapabilitiesForFlags,
+  asAgentCapabilities,
   MAA_LP_REQUIRED_API_COMPAT,
   MAA_LP_SUPPORTED_CONTRACT_VERSIONS,
   agentPublicBaseUrl,
@@ -95,7 +96,7 @@ async function rebootstrapExistingAgent(input: {
   const agent = await createAgentClient(config, rotated.agentApiKey).updateCapabilities(
     config.agentId,
     {
-      capabilities: declaredCapabilitiesForFlags(config),
+          capabilities: asAgentCapabilities(declaredCapabilitiesForFlags(config)),
       supportedContractVersions: [...MAA_LP_SUPPORTED_CONTRACT_VERSIONS]
     }
   );
@@ -182,7 +183,7 @@ export class LearningPlaneRegistrationService {
           baseUrl: agentPublicBaseUrl(effectiveConfig),
           callbackPath: effectiveConfig.callbackPath,
           healthEndpointPath: "/health",
-          capabilities: declaredCapabilitiesForFlags(effectiveConfig),
+          capabilities: asAgentCapabilities(declaredCapabilitiesForFlags(effectiveConfig)),
           enabled: true
         })) as {
           agent: RegisteredAgent;
@@ -328,7 +329,7 @@ export class LearningPlaneRegistrationService {
     }
 
     try {
-      const expectedCapabilities = declaredCapabilitiesForFlags(config);
+      const expectedCapabilities = asAgentCapabilities(declaredCapabilitiesForFlags(config));
       const agent = await createAgentClient(config, secret.agentApiKey).updateCapabilities(
         config.agentId,
         {

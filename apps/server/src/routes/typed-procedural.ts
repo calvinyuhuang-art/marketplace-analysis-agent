@@ -97,6 +97,9 @@ export function typedProceduralRoutes(container: Container): Router {
           }))
         });
       }
+      container.learningPlane?.governanceBridge?.assertLocalApproveAllowed(
+        req.params.versionId!
+      );
       const version = container.typedProceduralService.approveVersion({
         versionId: req.params.versionId!,
         actorId: parsed.data.actorId
@@ -127,10 +130,18 @@ export function typedProceduralRoutes(container: Container): Router {
           }))
         });
       }
+      container.learningPlane?.governanceBridge?.assertActivationAllowed(
+        req.params.versionId!
+      );
       const activation = container.typedProceduralService.activateVersion({
         versionId: req.params.versionId!,
         actorId: parsed.data.actorId,
         reason: parsed.data.reason
+      });
+      container.learningPlane?.governanceBridge?.captureActivationReceipt({
+        versionId: activation.versionId,
+        activationId: activation.activationId,
+        result: "activated"
       });
       container.auditLog.append({
         actorType: "operator",
@@ -164,6 +175,11 @@ export function typedProceduralRoutes(container: Container): Router {
         actorId: parsed.data.actorId,
         reason: parsed.data.reason
       });
+      container.learningPlane?.governanceBridge?.captureRollbackReceipt({
+        versionId: activation.versionId,
+        activationId: activation.activationId,
+        result: "rolled_back"
+      });
       container.auditLog.append({
         actorType: "operator",
         actorId: parsed.data.actorId,
@@ -180,6 +196,70 @@ export function typedProceduralRoutes(container: Container): Router {
       next(err);
     }
   });
+
+  router.post(
+    "/v1/typed-procedural-versions/:versionId/share-to-learning-plane",
+    (req, res, next) => {
+      try {
+        if (!container.learningPlane?.governanceBridge) {
+          throw new AppError({
+            code: "UNSUPPORTED_OPERATION",
+            message: "Learning Plane governance bridge is unavailable."
+          });
+        }
+        const result =
+          container.learningPlane.governanceBridge.shareVersionToLearningPlane(
+            req.params.versionId!
+          );
+        container.auditLog.append({
+          actorType: "operator",
+          actorId: "maa-operator",
+          action: "typed_procedural.shared_to_learning_plane",
+          targetType: "typed_procedural_version",
+          targetId: req.params.versionId!,
+          after: {
+            outboxId: result.outboxId,
+            governanceOrigin: result.link.governance_origin,
+            approvalDoesNotActivate: true
+          }
+        });
+        res.status(202).json({
+          versionId: req.params.versionId,
+          governanceOrigin: result.link.governance_origin,
+          submissionStatus: result.link.submission_status,
+          outboxId: result.outboxId,
+          idempotentReplay: result.idempotentReplay,
+          approvalDoesNotActivate: true
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.get(
+    "/v1/typed-procedural-versions/:versionId/bridge-status",
+    (req, res, next) => {
+      try {
+        if (!container.learningPlane?.governanceBridge) {
+          res.status(200).json({
+            versionId: req.params.versionId,
+            governanceOrigin: "local_only",
+            bridgeAvailable: false
+          });
+          return;
+        }
+        res.status(200).json({
+          ...container.learningPlane.governanceBridge.getBridgeStatus(
+            req.params.versionId!
+          ),
+          bridgeAvailable: true
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
 
   return router;
 }
