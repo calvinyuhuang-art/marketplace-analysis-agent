@@ -51,9 +51,9 @@ afterEach(async () => {
 });
 
 describe("LP8-I4c MAA governance/replay bridge", () => {
-  it("ships service 0.20.0 / schema 0017 with bridge flags default off", () => {
-    expect(SERVICE_VERSION).toBe("0.20.0");
-    expect(CURRENT_DATABASE_SCHEMA_VERSION).toBe("0017");
+  it("ships service 0.21.0 / schema 0018 with bridge flags default off", () => {
+    expect(SERVICE_VERSION).toBe("0.21.0");
+    expect(CURRENT_DATABASE_SCHEMA_VERSION).toBe("0018");
     const cfg = ConfigSchema.parse({});
     expect(cfg.MAA_LEARNING_PLANE_GOVERNANCE_BRIDGE_ENABLED).toBe(false);
     expect(cfg.MAA_LEARNING_PLANE_GOVERNANCE_PUBLISH_ENABLED).toBe(false);
@@ -66,10 +66,10 @@ describe("LP8-I4c MAA governance/replay bridge", () => {
     expect(cfg.MAA_LEARNING_PLANE_GRANDFATHER_REGISTER_ENABLED).toBe(false);
   });
 
-  it("applies migration 0017 bridge tables on fresh install", () => {
+  it("applies migration 0017/0018 bridge tables on fresh install", () => {
     const container = createContainer(makeConfig());
     containers.push(container);
-    expect(container.databaseSchemaVersion).toBe("0017");
+    expect(container.databaseSchemaVersion).toBe("0018");
     const tables = (
       container.database.db
         .prepare(

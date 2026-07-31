@@ -120,7 +120,7 @@ describe("N4 typed procedural prevention", () => {
 
   it("activates format-normalization rule → readiness prevention → rollback (UAT Phase C)", async () => {
     expect(SERVICE_VERSION).toMatch(/^0\.(1[4-9]|[2-9]\d)\.\d+$/);
-    expect(CURRENT_DATABASE_SCHEMA_VERSION).toMatch(/^001[2-7]$/);
+    expect(CURRENT_DATABASE_SCHEMA_VERSION).toMatch(/^001[2-8]$/);
 
     const listed = await request(app).get("/v1/typed-procedural-rules");
     expect(listed.status).toBe(200);

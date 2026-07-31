@@ -63,10 +63,10 @@ function inboxByEvent(container: Container, eventId: string) {
 }
 
 async function main() {
-  if (SERVICE_VERSION !== "0.20.0") {
+  if (SERVICE_VERSION !== "0.21.0") {
     throw new Error(`Expected MAA SERVICE_VERSION 0.20.0, got ${SERVICE_VERSION}`);
   }
-  if (CURRENT_DATABASE_SCHEMA_VERSION !== "0017") {
+  if (CURRENT_DATABASE_SCHEMA_VERSION !== "0018") {
     throw new Error(`Expected schema 0017, got ${CURRENT_DATABASE_SCHEMA_VERSION}`);
   }
 

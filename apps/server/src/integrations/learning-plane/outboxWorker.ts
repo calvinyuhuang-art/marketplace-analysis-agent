@@ -152,7 +152,7 @@ export class LearningPlaneOutboxWorker {
         payload,
         artifactReferences: [],
         metadata: {
-          producerServiceVersion: "0.20.0",
+          producerServiceVersion: "0.21.0",
           payloadSchemaVersion: row.payload_schema_version,
           learningPlaneContractVersion: "1.0"
         }

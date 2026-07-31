@@ -24,10 +24,10 @@ function required(name: string): string {
 }
 
 async function main(): Promise<void> {
-  if (SERVICE_VERSION !== "0.20.0") {
+  if (SERVICE_VERSION !== "0.21.0") {
     throw new Error(`MAA sidecar expects 0.20.0, got ${SERVICE_VERSION}`);
   }
-  if (CURRENT_DATABASE_SCHEMA_VERSION !== "0017") {
+  if (CURRENT_DATABASE_SCHEMA_VERSION !== "0018") {
     throw new Error(`MAA sidecar expects schema 0017, got ${CURRENT_DATABASE_SCHEMA_VERSION}`);
   }
 

@@ -72,8 +72,8 @@ async function waitHttp(
 }
 
 async function main(): Promise<void> {
-  assert(SERVICE_VERSION === "0.20.0", "MAA must be 0.20.0");
-  assert(CURRENT_DATABASE_SCHEMA_VERSION === "0017", "schema must be 0017");
+  assert(SERVICE_VERSION === "0.21.0", "MAA must be 0.20.0");
+  assert(CURRENT_DATABASE_SCHEMA_VERSION === "0018", "schema must be 0017");
   assert(existsSync(LP_ROOT), "Learning Plane root missing");
 
   const steps: Step[] = [];

@@ -62,7 +62,7 @@ function evidence(subjectId: string) {
       fields: { price: 9.99 },
       provenance: {
         collector: "test",
-        collectorVersion: "0.20.0",
+        collectorVersion: "0.21.0",
         observedAt: new Date().toISOString()
       },
       confidence: 1,
@@ -122,8 +122,8 @@ afterEach(async () => {
 
 describe("LP8-I3b-b evaluated identity immutability", () => {
   it("freezes resolutionId, idempotency key, and payload at capture", () => {
-    expect(SERVICE_VERSION).toBe("0.20.0");
-    expect(CURRENT_DATABASE_SCHEMA_VERSION).toBe("0017");
+    expect(SERVICE_VERSION).toBe("0.21.0");
+    expect(CURRENT_DATABASE_SCHEMA_VERSION).toBe("0018");
     const config = makeConfig({
       MAA_LEARNING_PLANE_ENABLED: "true",
       MAA_LEARNING_PLANE_PUBLISH_ENABLED: "true"
@@ -324,7 +324,7 @@ describe("LP8-I3b-b evaluated identity immutability", () => {
     restoreBackup({
       backupPath: backup.backupPath,
       databasePath: restoredPath,
-      maxSupportedDatabaseSchemaVersion: "0017"
+      maxSupportedDatabaseSchemaVersion: "0018"
     });
     const restored = Database.open({ path: restoredPath });
     try {

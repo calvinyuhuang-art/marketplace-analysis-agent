@@ -55,10 +55,10 @@ afterEach(async () => {
 });
 
 describe("LP8-I3b production workflow-feedback adapter", () => {
-  it("verifies vendored 0.8.1 package checksums and identity", () => {
+  it("verifies vendored 0.8.2 package checksums and identity", () => {
     const identity = loadLearningPlanePackageIdentity(repoRoot);
-    expect(identity.clientVersion).toBe("0.8.1");
-    expect(identity.contractsVersion).toBe("0.8.1");
+    expect(identity.clientVersion).toBe("0.8.2");
+    expect(identity.contractsVersion).toBe("0.8.2");
     expect(identity.apiCompat).toBe("2026.07");
     expect(identity.envelopeVersion).toBe("1.0");
     expect(identity.releasedWorkflowFeedbackPayloadVersions["workflow_feedback.created"]).toBe(
@@ -67,19 +67,19 @@ describe("LP8-I3b production workflow-feedback adapter", () => {
 
     const contractsPath = join(
       repoRoot,
-      "vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz"
+      "vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz"
     );
     const clientPath = join(
       repoRoot,
-      "vendor/learning-plane/artifacts/learning-plane-client-0.8.1.tgz"
+      "vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz"
     );
     const contractsSha = createHash("sha256").update(readFileSync(contractsPath)).digest("hex");
     const clientSha = createHash("sha256").update(readFileSync(clientPath)).digest("hex");
     expect(contractsSha).toBe(
-      "8f93925ffafb2adc3b66bd1921070478422bdfacf0fb72957f86526b8de9880e"
+      "36e79ba05eb34e88a57d014ff3caac95d852bffff758c3aaa5d50f81c21ea196"
     );
     expect(clientSha).toBe(
-      "b3ada763ab58c7762ed5ac4bc6f49fd415e415158def1c60bb0e34e183d4ead2"
+      "1fef73dcc159e9a1ba1ae986e9f9f757c8d5927a0a8b42224a8376a1199ce335"
     );
     expect(identity.packageChecksum.contracts).toBe(contractsSha);
     expect(identity.packageChecksum.client).toBe(clientSha);
@@ -133,9 +133,9 @@ describe("LP8-I3b production workflow-feedback adapter", () => {
     });
     const container = createContainer(config, { startWorker: false });
     containers.push(container);
-    expect(SERVICE_VERSION).toBe("0.20.0");
-    expect(CURRENT_DATABASE_SCHEMA_VERSION).toBe("0017");
-    expect(container.databaseSchemaVersion).toBe("0017");
+    expect(SERVICE_VERSION).toBe("0.21.0");
+    expect(CURRENT_DATABASE_SCHEMA_VERSION).toBe("0018");
+    expect(container.databaseSchemaVersion).toBe("0018");
 
     const feedback = container.workflowFeedbackService.detectLatePricingGaps({
       projectId: "proj_tx",
@@ -299,6 +299,6 @@ describe("LP8-I3b production workflow-feedback adapter", () => {
       `maa:workflow-feedback:${created!.workflowFeedbackId}:resolution:maa:resolution:${created!.workflowFeedbackId}:evaluated:run_eval_rev:v1`
     );
     expect(JSON.parse(waiting.payload_json).resolutionId).toBe(waiting.resolution_id);
-    expect(SERVICE_VERSION).toBe("0.20.0");
+    expect(SERVICE_VERSION).toBe("0.21.0");
   });
 });
