@@ -178,8 +178,17 @@ describe("M10 hardening", () => {
         expect(res.body.dryRun).toBe(true);
       } finally {
         await container.shutdown();
-        rmSync(artifactRoot, { recursive: true, force: true });
-        rmSync(logRoot, { recursive: true, force: true });
+        await new Promise((r) => setTimeout(r, 100));
+        try {
+          rmSync(artifactRoot, { recursive: true, force: true });
+        } catch {
+          /* Windows log handle race */
+        }
+        try {
+          rmSync(logRoot, { recursive: true, force: true });
+        } catch {
+          /* Windows log handle race */
+        }
       }
     });
   });

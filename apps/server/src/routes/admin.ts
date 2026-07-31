@@ -7,7 +7,10 @@ import {
   purgeExpiredArtifacts,
   restoreBackup
 } from "@maa/ops";
-import type { Container } from "../composition/container";
+import {
+  CURRENT_DATABASE_SCHEMA_VERSION,
+  type Container
+} from "../composition/container";
 
 /**
  * Local admin/ops endpoints. Require auth whenever an API key is configured;
@@ -42,6 +45,7 @@ export function adminRoutes(container: Container): Router {
         databasePath: container.config.databasePath,
         backupDir: container.config.backupDir,
         serviceVersion: container.serviceVersion,
+        databaseSchemaVersion: container.databaseSchemaVersion,
         includeArtifacts,
         artifactRoot: container.config.artifactRoot,
         notes: "api"
@@ -95,7 +99,9 @@ export function adminRoutes(container: Container): Router {
         backupPath: body.backupPath,
         databasePath: container.config.databasePath,
         restoreArtifacts: Boolean(body.restoreArtifacts),
-        artifactRoot: container.config.artifactRoot
+        artifactRoot: container.config.artifactRoot,
+        maxSupportedDatabaseSchemaVersion:
+          container.databaseSchemaVersion || CURRENT_DATABASE_SCHEMA_VERSION
       });
       container.metrics.increment("restores_total");
       container.auditLog.append({
@@ -146,7 +152,8 @@ export function adminRoutes(container: Container): Router {
       artifactRetentionDays: raw.MAA_ARTIFACT_RETENTION_DAYS,
       host: raw.MAA_HOST,
       port: raw.MAA_PORT,
-      serviceVersion: container.serviceVersion
+      serviceVersion: container.serviceVersion,
+      databaseSchemaVersion: container.databaseSchemaVersion
     });
   });
 

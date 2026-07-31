@@ -9,3 +9,8 @@ export * from "./memory-repositories";
 export * from "./learning-repositories";
 export * from "./memory-proposals-repositories";
 export * from "./wiki-repositories";
+export * from "./experience-repositories";
+export * from "./evidence-plan-repositories";
+export * from "./workflow-feedback-repositories";
+export * from "./typed-procedural-repositories";
+export * from "./outcome-repositories";

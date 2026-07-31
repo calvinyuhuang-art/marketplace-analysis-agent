@@ -188,7 +188,10 @@ export const ProceduralRulePromptItemSchema = z.object({
   title: z.string(),
   statement: z.string(),
   analysisAreas: z.array(AnalysisArea).default([]),
-  requireDirectCustomerEvidence: z.boolean().default(false)
+  requireDirectCustomerEvidence: z.boolean().default(false),
+  /** Present when item comes from the typed procedural registry (N4+). */
+  ruleType: z.string().optional(),
+  versionId: z.string().optional()
 });
 export type ProceduralRulePromptItem = z.infer<typeof ProceduralRulePromptItemSchema>;
 

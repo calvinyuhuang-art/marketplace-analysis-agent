@@ -1,6 +1,7 @@
 import type { FakeProvider } from "@maa/model-router";
 import {
   generateFromEvidence,
+  generateComparativeFromEvidence,
   mixedFormatPriceOutput,
   unsupportedCustomerClaimOutput
 } from "./from-evidence";
@@ -15,6 +16,14 @@ export function registerAnalysisFixtures(provider: FakeProvider): void {
     build: (request) => generateFromEvidence(request.promptPayload as AnalysisPromptPayload),
     inputTokens: 250,
     outputTokens: 400,
+    costUsd: 0
+  });
+
+  provider.register("analysis.v1.comparative", {
+    build: (request) =>
+      generateComparativeFromEvidence(request.promptPayload as AnalysisPromptPayload),
+    inputTokens: 280,
+    outputTokens: 420,
     costUsd: 0
   });
 

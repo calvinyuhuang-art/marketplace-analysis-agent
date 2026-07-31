@@ -52,6 +52,8 @@ export interface RunAnalysisInput {
   requestedAreas: AnalysisArea[];
   readiness?: ReadinessReport;
   evidenceItems: EvidenceItem[];
+  baselineEvidenceItems?: EvidenceItem[];
+  compareEvidenceItems?: EvidenceItem[];
   approvedMemory?: import("@maa/contracts").MemoryPromptItem[];
   failureCorrections?: import("@maa/contracts").MemoryPromptItem[];
   proceduralRules?: import("@maa/contracts").ProceduralRulePromptItem[];
@@ -117,6 +119,8 @@ export async function runStructuredAnalysis(
     plan,
     readiness: input.readiness,
     evidenceItems: input.evidenceItems,
+    baselineEvidenceItems: input.baselineEvidenceItems,
+    compareEvidenceItems: input.compareEvidenceItems,
     approvedMemory: input.approvedMemory,
     failureCorrections: input.failureCorrections,
     proceduralRules: input.proceduralRules

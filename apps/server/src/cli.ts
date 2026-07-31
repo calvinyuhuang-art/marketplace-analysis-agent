@@ -6,12 +6,16 @@ import { resolve } from "node:path";
 import {
   checkDatabaseIntegrity,
   createBackup,
+  getDatabaseSchemaVersion,
   purgeExpiredArtifacts,
   restoreBackup
 } from "@maa/ops";
 import { Database } from "@maa/database";
 import { loadConfig } from "./config/index";
-import { SERVICE_VERSION } from "./composition/container";
+import {
+  CURRENT_DATABASE_SCHEMA_VERSION,
+  SERVICE_VERSION
+} from "./composition/container";
 
 async function main(): Promise<void> {
   const [cmd, ...args] = process.argv.slice(2);
@@ -31,10 +35,15 @@ async function main(): Promise<void> {
     }
     case "backup": {
       const includeArtifacts = args.includes("--artifacts");
+      const databaseSchemaVersion =
+        config.databasePath === ":memory:"
+          ? CURRENT_DATABASE_SCHEMA_VERSION
+          : getDatabaseSchemaVersion(config.databasePath);
       const result = createBackup({
         databasePath: config.databasePath,
         backupDir: config.backupDir,
         serviceVersion: SERVICE_VERSION,
+        databaseSchemaVersion,
         includeArtifacts,
         artifactRoot: config.artifactRoot,
         notes: "cli"
@@ -52,7 +61,8 @@ async function main(): Promise<void> {
         backupPath: resolve(backupPath),
         databasePath: config.databasePath,
         restoreArtifacts: args.includes("--artifacts"),
-        artifactRoot: config.artifactRoot
+        artifactRoot: config.artifactRoot,
+        maxSupportedDatabaseSchemaVersion: CURRENT_DATABASE_SCHEMA_VERSION
       });
       console.log(JSON.stringify({ ok: true, manifest }, null, 2));
       break;
@@ -76,6 +86,7 @@ async function main(): Promise<void> {
         JSON.stringify(
           {
             serviceVersion: SERVICE_VERSION,
+            databaseSchemaVersion: CURRENT_DATABASE_SCHEMA_VERSION,
             profile: config.raw.MAA_CONFIG_PROFILE,
             authRequired:
               config.raw.MAA_REQUIRE_API_KEY || config.raw.MAA_API_KEY.trim().length > 0,

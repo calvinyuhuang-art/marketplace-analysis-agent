@@ -19,7 +19,8 @@
       "@maa/learning": ["packages/learning/src/index.ts"],
       "@maa/wiki": ["packages/wiki/src/index.ts"],
       "@maa/client": ["packages/client/src/index.ts"],
-      "@maa/ops": ["packages/ops/src/index.ts"]
+      "@maa/ops": ["packages/ops/src/index.ts"],
+      "@maa/agent-memory-contracts": ["packages/agent-memory-contracts/src/index.ts"]
     }
   },
   "include": [

@@ -16,3 +16,8 @@ export type {
   ResearchWorkOrderRecord
 } from "./research-adapter.js";
 export { runAnalysisWorkflow, isResearchTeamMaaEnabled } from "./workflow.js";
+export {
+  MAA_API_COMPAT_LABEL,
+  MIN_SERVER_VERSION,
+  REMOVED_PUBLIC_OPERATIONS
+} from "./compat.js";

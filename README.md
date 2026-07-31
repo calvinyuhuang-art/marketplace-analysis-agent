@@ -6,18 +6,48 @@ intelligence, checks evidence sufficiency before making claims, produces
 traceable findings, and learns through governed memory — all behind a stable
 HTTP API. It is **not** a chatbot or an autonomous agent.
 
-The authoritative specification is
+The authoritative product specification for the completed M0–M10 cycle is
 [`Marketplace_Analysis_Agent_Development_Plan.md`](./Marketplace_Analysis_Agent_Development_Plan.md).
+
+The **next architecture cycle (N0–N7)** is governed by Design Spec v0.3 / Learning
+Architecture v0.2. N0 compatibility freeze artifacts live under [`docs/`](./docs/):
+
+- [`docs/COMPATIBILITY_MAP.md`](./docs/COMPATIBILITY_MAP.md)
+- [`docs/N0_ARCHITECTURE_DECISIONS.md`](./docs/N0_ARCHITECTURE_DECISIONS.md)
+- [`docs/API_DEPRECATION_MAP.md`](./docs/API_DEPRECATION_MAP.md)
+- [`docs/N1_IMPLEMENTATION_PLAN.md`](./docs/N1_IMPLEMENTATION_PLAN.md)
+- [`docs/N1_COMPLETION.md`](./docs/N1_COMPLETION.md)
+- [`docs/N2_IMPLEMENTATION_PLAN.md`](./docs/N2_IMPLEMENTATION_PLAN.md)
+- [`docs/N2_COMPLETION.md`](./docs/N2_COMPLETION.md)
+- [`docs/N3_IMPLEMENTATION_PLAN.md`](./docs/N3_IMPLEMENTATION_PLAN.md)
+- [`docs/N3_COMPLETION.md`](./docs/N3_COMPLETION.md)
+- [`docs/N4_IMPLEMENTATION_PLAN.md`](./docs/N4_IMPLEMENTATION_PLAN.md)
+- [`docs/N4_COMPLETION.md`](./docs/N4_COMPLETION.md)
+- [`docs/N5_IMPLEMENTATION_PLAN.md`](./docs/N5_IMPLEMENTATION_PLAN.md)
+- [`docs/N5_COMPLETION.md`](./docs/N5_COMPLETION.md)
+- [`docs/N6_IMPLEMENTATION_PLAN.md`](./docs/N6_IMPLEMENTATION_PLAN.md)
+- [`docs/N6_COMPLETION.md`](./docs/N6_COMPLETION.md)
+- [`docs/N7_IMPLEMENTATION_PLAN.md`](./docs/N7_IMPLEMENTATION_PLAN.md)
+- [`docs/N7_COMPLETION.md`](./docs/N7_COMPLETION.md)
+- [`docs/N7_LIVE_UAT.md`](./docs/N7_LIVE_UAT.md)
+- [`docs/SALES_OS_INTEGRATION.md`](./docs/SALES_OS_INTEGRATION.md)
 
 > Research direction, product, topic, and evidence are always supplied per
 > request by the upstream Sales OS Research Orchestrator. Platform/category/
 > product are capability-pack coordinates, never hardcoded request defaults.
 
-## Status: M10 — Hardening and Publishability Preparation
+## Status: LP8-I1a complete — Learning Plane client compatibility (0.18.1)
 
-Through M10: local API auth, config profiles, backup/integrity/retention ops,
-expanded metrics, and threat-model docs. External auth / cloud multi-tenancy
-remain out of scope.
+M0–M10 + N0–N7 remain shipped. **LP8-I1** foundation (0.18.0 / schema **0015**)
+plus **LP8-I1a** advances service to **0.18.1** with corrected
+`@learning-plane/client@0.7.1` / `@learning-plane/contracts@0.7.1` artifacts
+(no new migration). API compatibility remains **2026.07**. The adapter still
+registers as `marketplace-analysis-agent`, reports health, and stores secrets
+outside SQLite. Production event publish/receive is intentionally not implemented.
+
+Prior N7 (0.17.0 / schema 0014) hardening notes remain in `docs/N7_COMPLETION.md`.
+Learning Plane adapter details: Learning Plane repo
+`docs/LP8_I1_MAA_ADAPTER_FOUNDATION.md` and `docs/LP8_I1A_CLIENT_COMPATIBILITY_CLOSURE.md`.
 
 ## Prerequisites
 

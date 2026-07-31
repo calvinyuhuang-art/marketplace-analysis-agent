@@ -11,9 +11,13 @@ export const OperationType = z.enum([
   "revise_analysis",
   "comparative_analysis",
   "evaluate_evidence_readiness",
-  "propose_memory_update"
+  "review_evidence_plan",
+  "reassess_with_outcome"
 ]);
 export type OperationType = z.infer<typeof OperationType>;
+
+/** Removed from public allowlist in N7 — prefer `/v1/memory-proposals`. */
+export const REMOVED_PUBLIC_OPERATIONS = ["propose_memory_update"] as const;
 
 /**
  * Supported analysis areas for the first capability pack. Every focused

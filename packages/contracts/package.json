@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@maa/agent-memory-contracts": "workspace:*",
     "zod": "^4.0.0"
   }
 }

@@ -43,6 +43,12 @@ export interface FakeWorkflowOptions {
     artifactStore: ArtifactStore;
     auditLog: AuditLog;
     agentLog: Logger;
+    /** N4: enrich readiness with active typed procedural prevention rules. */
+    applyTypedProceduralRules?: (input: {
+      report: import("@maa/contracts").ReadinessReport;
+      items: import("@maa/contracts").EvidenceItem[];
+      requestedAreas: AnalysisArea[];
+    }) => import("@maa/contracts").ReadinessReport;
   };
   /** When set, analyzing runs structured model analysis + quality gates. */
   analysis?: {
@@ -70,7 +76,6 @@ export interface FakeWorkflowOptions {
     saveWorking: typeof import("@maa/memory").saveWorkingMemoryFromFindings;
     agentLog: Logger;
     auditLog: AuditLog;
-    /** Optional M6 procedural rule resolver for context assembly. */
     resolveProceduralRules?: (input: {
       projectId: string;
       platform?: string;
@@ -80,6 +85,80 @@ export interface FakeWorkflowOptions {
       analysisAreas: AnalysisArea[];
     }) => import("@maa/contracts").ProceduralRulePromptItem[];
     projects?: import("@maa/database").ProjectsRepository;
+  };
+  /** N1: experience/evaluation capture hooks (duck-typed; implemented by ExperienceService). */
+  experience?: {
+    captureStarted: (input: {
+      projectId: string;
+      requestId: string;
+      runId: string;
+      attempt: number;
+      correlationId?: string | null;
+      operation: string;
+      capabilityKey?: string | null;
+      capabilityVersion?: string | null;
+      evidencePackageIds?: string[];
+    }) => void;
+    complete: (input: {
+      runId: string;
+      status: "completed" | "failed" | "cancelled";
+      contextAssemblyId?: string | null;
+      outputArtifactId?: string | null;
+      tokenInput?: number;
+      tokenOutput?: number;
+      costUsd?: number;
+      summary?: string;
+    }) => void;
+    recordDeterministicEvaluation?: (input: {
+      runId: string;
+      decision: string;
+      sourceRecordId: string;
+      scores?: Record<string, unknown>;
+    }) => void;
+  };
+  /** N2: deterministic evidence-plan review (duck-typed EvidencePlanService). */
+  planReview?: {
+    reviewForRun: (input: {
+      planId: string;
+      planVersion?: number;
+      runId: string;
+    }) => {
+      reviewId: string;
+      decision: string;
+      report: unknown;
+      reportArtifactId: string;
+    };
+  };
+  /** N3: late-gap detection after analysis. */
+  workflowFeedback?: {
+    detectLatePricingGaps: (input: {
+      projectId: string;
+      runId: string;
+      requestId: string;
+      correlationId?: string | null;
+      externalWorkOrderId?: string | null;
+      operation: string;
+      capabilityVersion: string;
+      platform: string;
+      marketplace: string;
+      productType: string;
+      requestedAreas: AnalysisArea[];
+      evidenceItems: import("@maa/contracts").EvidenceItem[];
+      outputArtifactId?: string | null;
+      readiness?: import("@maa/contracts").ReadinessReport;
+    }) => { workflowFeedbackId: string } | null;
+  };
+  /** N5: deterministic outcome reassessment. */
+  outcomeReassess?: {
+    reassessForRun: (input: {
+      outcomeId: string;
+      runId: string;
+      experienceId?: string;
+    }) => {
+      reassessmentId: string;
+      judgments: Array<{ findingId?: string; judgment: string; rationale: string }>;
+      reportArtifactId: string;
+    };
   };
 }
 
@@ -134,6 +213,205 @@ export async function runFakeWorkflow(
     }, options.heartbeatMs);
     heartbeatTimer.unref?.();
 
+    const initial = deps.runs.getById(runId);
+    const initialReq = initial ? deps.requests.getById(initial.requestId) : undefined;
+    if (initial && initialReq && options.experience) {
+      const evidencePackageIds =
+        options.analysis?.packages.listForRequest(initialReq.requestId).map((p) => p.packageId) ??
+        [];
+      options.experience.captureStarted({
+        projectId: initialReq.projectId,
+        requestId: initialReq.requestId,
+        runId,
+        attempt: initial.attemptNumber ?? 1,
+        correlationId: initial.correlationId,
+        operation: initialReq.operation,
+        capabilityKey: initialReq.capabilityId ?? null,
+        capabilityVersion: initialReq.capabilityVersion ?? null,
+        evidencePackageIds
+      });
+    }
+
+    const syncExperienceTerminal = (
+      experienceStatus: "completed" | "failed" | "cancelled",
+      summary?: string
+    ): void => {
+      if (!options.experience) return;
+      const run = deps.runs.getById(runId);
+      if (!run) return;
+      options.experience.complete({
+        runId,
+        status: experienceStatus,
+        contextAssemblyId: recalled?.assemblyId ?? null,
+        outputArtifactId: run.outputArtifactId,
+        tokenInput: run.tokenInput ?? 0,
+        tokenOutput: run.tokenOutput ?? 0,
+        costUsd: run.costUsd ?? 0,
+        summary
+      });
+    };
+
+    // N2: review_evidence_plan is a short deterministic workflow (no model / evidence readiness).
+    if (
+      initialReq?.operation === "review_evidence_plan" &&
+      options.planReview &&
+      initialReq.evidencePlanId
+    ) {
+      try {
+        for (const phase of ["planning", "recalling_memory", "evaluating_evidence"] as const) {
+          transitionRun(deps, {
+            runId,
+            toStatus: phase,
+            phase,
+            detail: { operation: "review_evidence_plan" },
+            actorType: "system",
+            actorId: "fake-workflow"
+          });
+          options.onPhase?.(runId, phase);
+        }
+
+        const result = options.planReview.reviewForRun({
+          planId: initialReq.evidencePlanId,
+          planVersion: initialReq.evidencePlanVersion ?? undefined,
+          runId
+        });
+
+        options.experience?.recordDeterministicEvaluation?.({
+          runId,
+          decision: result.decision,
+          sourceRecordId: result.reviewId,
+          scores: {
+            decision: result.decision,
+            reportArtifactId: result.reportArtifactId,
+            planId: initialReq.evidencePlanId
+          }
+        });
+
+        deps.runs.update({
+          runId,
+          outputArtifactId: result.reportArtifactId,
+          updatedAt: new Date().toISOString()
+        });
+
+        for (const phase of [
+          "analyzing",
+          "reviewing_output",
+          "proposing_memory",
+          "completed"
+        ] as const) {
+          transitionRun(deps, {
+            runId,
+            toStatus: phase,
+            phase,
+            detail: {
+              operation: "review_evidence_plan",
+              decision: result.decision,
+              reviewId: result.reviewId
+            },
+            actorType: "system",
+            actorId: "fake-workflow"
+          });
+          options.onPhase?.(runId, phase);
+        }
+        syncExperienceTerminal("completed", `plan_review:${result.decision}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const code =
+          err && typeof err === "object" && "code" in err
+            ? String((err as { code: string }).code)
+            : "INTERNAL_ERROR";
+        transitionRun(deps, {
+          runId,
+          toStatus: "failed",
+          phase: "failed",
+          failureCode: code,
+          failureMessage: message,
+          detail: { reason: "plan_review_failed" },
+          actorType: "system",
+          actorId: "fake-workflow"
+        });
+        options.onPhase?.(runId, "failed");
+        syncExperienceTerminal("failed", "plan_review_failed");
+      }
+      return;
+    }
+
+    // N5: reassess_with_outcome is a short deterministic workflow (no model / readiness).
+    if (
+      initialReq?.operation === "reassess_with_outcome" &&
+      options.outcomeReassess &&
+      initialReq.outcomeId
+    ) {
+      try {
+        for (const phase of ["planning", "recalling_memory", "evaluating_evidence"] as const) {
+          transitionRun(deps, {
+            runId,
+            toStatus: phase,
+            phase,
+            detail: { operation: "reassess_with_outcome" },
+            actorType: "system",
+            actorId: "fake-workflow"
+          });
+          options.onPhase?.(runId, phase);
+        }
+
+        const result = options.outcomeReassess.reassessForRun({
+          outcomeId: initialReq.outcomeId,
+          runId
+        });
+
+        deps.runs.update({
+          runId,
+          outputArtifactId: result.reportArtifactId,
+          updatedAt: new Date().toISOString()
+        });
+
+        for (const phase of [
+          "analyzing",
+          "reviewing_output",
+          "proposing_memory",
+          "completed"
+        ] as const) {
+          transitionRun(deps, {
+            runId,
+            toStatus: phase,
+            phase,
+            detail: {
+              operation: "reassess_with_outcome",
+              reassessmentId: result.reassessmentId,
+              primaryJudgment: result.judgments[0]?.judgment
+            },
+            actorType: "system",
+            actorId: "fake-workflow"
+          });
+          options.onPhase?.(runId, phase);
+        }
+        syncExperienceTerminal(
+          "completed",
+          `outcome_reassess:${result.judgments[0]?.judgment ?? "done"}`
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const code =
+          err && typeof err === "object" && "code" in err
+            ? String((err as { code: string }).code)
+            : "INTERNAL_ERROR";
+        transitionRun(deps, {
+          runId,
+          toStatus: "failed",
+          phase: "failed",
+          failureCode: code,
+          failureMessage: message,
+          detail: { reason: "outcome_reassess_failed" },
+          actorType: "system",
+          actorId: "fake-workflow"
+        });
+        options.onPhase?.(runId, "failed");
+        syncExperienceTerminal("failed", "outcome_reassess_failed");
+      }
+      return;
+    }
+
     for (const phase of phases) {
       const current = deps.runs.getById(runId);
       if (!current) return;
@@ -147,6 +425,7 @@ export async function runFakeWorkflow(
           actorType: "system",
           actorId: "worker"
         });
+        syncExperienceTerminal("cancelled", "cancel_requested");
         return;
       }
 
@@ -161,10 +440,12 @@ export async function runFakeWorkflow(
           actorType: "system",
           actorId: "worker"
         });
+        syncExperienceTerminal("failed", "timeout");
         return;
       }
 
       if (isTerminalStatus(current.status as RunStatus)) {
+        syncExperienceFromRunStatus(current.status as RunStatus, syncExperienceTerminal);
         return;
       }
 
@@ -189,6 +470,7 @@ export async function runFakeWorkflow(
           actorId: "fake-workflow"
         });
         options.onPhase?.(runId, terminalOverride);
+        syncExperienceFromRunStatus(terminalOverride, syncExperienceTerminal);
         return;
       }
 
@@ -206,6 +488,7 @@ export async function runFakeWorkflow(
           actorId: "fake-workflow"
         });
         options.onPhase?.(runId, "partial");
+        syncExperienceTerminal("completed", "partial_readiness");
         return;
       }
 
@@ -227,6 +510,17 @@ export async function runFakeWorkflow(
         const result = evaluateAndPersistReadiness(deps, runId, options.readiness);
         readinessReport = result.report;
 
+        options.experience?.recordDeterministicEvaluation?.({
+          runId,
+          decision: result.report.overallStatus,
+          sourceRecordId: `readiness:${runId}`,
+          scores: {
+            overallStatus: result.report.overallStatus,
+            readyAreas: result.report.readyAreas,
+            blockedAreas: result.report.blockedAreas
+          }
+        });
+
         const request = deps.requests.getById(current.requestId);
         const readinessOnly = request?.operation === "evaluate_evidence_readiness";
 
@@ -240,7 +534,15 @@ export async function runFakeWorkflow(
 
       if (phase === "analyzing" && options.analysis && !terminalOverride) {
         try {
-          await executeAnalysisPhase(deps, runId, readinessReport, options.analysis, recalled);
+          await executeAnalysisPhase(
+            deps,
+            runId,
+            readinessReport,
+            options.analysis,
+            recalled,
+            options.workflowFeedback,
+            options.experience
+          );
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           const code =
@@ -258,12 +560,17 @@ export async function runFakeWorkflow(
             actorId: "analysis-runner"
           });
           options.onPhase?.(runId, "failed");
+          syncExperienceTerminal("failed", "analysis_failed");
           return;
         }
       }
 
       if (phase === "proposing_memory" && options.memory && !terminalOverride) {
         executeProposeMemory(deps, runId, options.memory);
+      }
+
+      if (phase === "completed" && !terminalOverride) {
+        syncExperienceTerminal("completed");
       }
 
       if (phase !== "completed" && options.phaseDelayMs > 0) {
@@ -273,6 +580,44 @@ export async function runFakeWorkflow(
   } finally {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     deps.locks.release(lockKey, options.ownerInstance);
+    // Safety net: sync experience if run already terminal but experience still started.
+    if (options.experience) {
+      const finalRun = deps.runs.getById(runId);
+      if (finalRun && isTerminalStatus(finalRun.status as RunStatus)) {
+        const map =
+          finalRun.status === "cancelled"
+            ? "cancelled"
+            : finalRun.status === "failed" || finalRun.status === "evidence_insufficient"
+              ? "failed"
+              : "completed";
+        options.experience.complete({
+          runId,
+          status: map,
+          contextAssemblyId: recalled?.assemblyId ?? null,
+          outputArtifactId: finalRun.outputArtifactId,
+          tokenInput: finalRun.tokenInput ?? 0,
+          tokenOutput: finalRun.tokenOutput ?? 0,
+          costUsd: finalRun.costUsd ?? 0,
+          summary: finalRun.status
+        });
+      }
+    }
+  }
+}
+
+function syncExperienceFromRunStatus(
+  status: RunStatus,
+  sync: (experienceStatus: "completed" | "failed" | "cancelled", summary?: string) => void
+): void {
+  if (status === "cancelled") sync("cancelled", status);
+  else if (status === "failed" || status === "evidence_insufficient") sync("failed", status);
+  else if (
+    status === "completed" ||
+    status === "partial" ||
+    status === "blocked" ||
+    status === "needs_revision"
+  ) {
+    sync("completed", status);
   }
 }
 
@@ -289,7 +634,9 @@ async function executeAnalysisPhase(
     failureCorrections: import("@maa/contracts").MemoryPromptItem[];
     proceduralRules?: import("@maa/contracts").ProceduralRulePromptItem[];
     assemblyId: string;
-  }
+  },
+  workflowFeedback?: FakeWorkflowOptions["workflowFeedback"],
+  experience?: FakeWorkflowOptions["experience"]
 ): Promise<void> {
   const run = deps.runs.getById(runId)!;
   const request = deps.requests.getById(run.requestId)!;
@@ -304,8 +651,27 @@ async function executeAnalysisPhase(
     : { name: "unknown", salesGoal: "unknown", constraints: [] };
 
   const packageIds = analysis.packages.listForRequest(run.requestId).map((p) => p.packageId);
+  let baselineIds: string[] = [];
+  try {
+    baselineIds = JSON.parse(request.baselineEvidencePackageIdsJson || "[]") as string[];
+  } catch {
+    baselineIds = [];
+  }
+  const compareIds = packageIds.filter((id) => !baselineIds.includes(id));
   const evidenceItems = analysis.evidence.getItemsForPackages(packageIds);
+  const baselineEvidenceItems =
+    baselineIds.length > 0
+      ? analysis.evidence.getItemsForPackages(baselineIds)
+      : undefined;
+  const compareEvidenceItems =
+    compareIds.length > 0
+      ? analysis.evidence.getItemsForPackages(compareIds)
+      : undefined;
   const requestedAreas = JSON.parse(request.requestedAnalysisJson) as AnalysisArea[];
+  const fixtureKey =
+    request.operation === "comparative_analysis"
+      ? "analysis.v1.comparative"
+      : analysis.fixtureKey;
 
   const result = await analysis.run(analysis.deps, {
     runId,
@@ -316,10 +682,12 @@ async function executeAnalysisPhase(
     requestedAreas,
     readiness: readinessReport,
     evidenceItems,
+    baselineEvidenceItems,
+    compareEvidenceItems,
     approvedMemory: recalled?.approved,
     failureCorrections: recalled?.failureCorrections,
     proceduralRules: recalled?.proceduralRules,
-    fixtureKey: analysis.fixtureKey
+    fixtureKey
   });
 
   const now = new Date().toISOString();
@@ -380,6 +748,47 @@ async function executeAnalysisPhase(
     },
     "structured analysis completed"
   );
+
+  if (workflowFeedback) {
+    const feedback = workflowFeedback.detectLatePricingGaps({
+      projectId: request.projectId,
+      runId,
+      requestId: run.requestId,
+      correlationId: run.correlationId,
+      externalWorkOrderId: request.externalWorkOrderId,
+      operation: request.operation,
+      capabilityVersion: request.capabilityVersion ?? "0.1.0",
+      platform: project?.platform ?? "amazon",
+      marketplace: project?.marketplace ?? "US",
+      productType: project?.productType ?? "adult_coloring_book",
+      requestedAreas,
+      evidenceItems,
+      outputArtifactId: result.outputArtifactId,
+      readiness: readinessReport
+    });
+    if (feedback) {
+      experience?.recordDeterministicEvaluation?.({
+        runId,
+        decision: "late_evidence_gap_detected",
+        sourceRecordId: feedback.workflowFeedbackId,
+        scores: { feedbackType: "late_evidence_gap" }
+      });
+      deps.events.insert({
+        eventId: newId(IdPrefix.event),
+        runId,
+        requestId: run.requestId,
+        correlationId: run.correlationId,
+        eventType: "late_evidence_gap_detected",
+        phase: "analyzing",
+        fromStatus: "analyzing",
+        toStatus: "analyzing",
+        detailJson: JSON.stringify({
+          workflowFeedbackId: feedback.workflowFeedbackId
+        }),
+        createdAt: new Date().toISOString()
+      });
+    }
+  }
 
   if (run.priorRunId && analysis.onRevisionComplete) {
     analysis.onRevisionComplete(runId);
@@ -541,7 +950,7 @@ function evaluateAndPersistReadiness(
   const items = readiness.evidence.getItemsForPackages(packageIds);
   const requestedAnalysis = JSON.parse(request.requestedAnalysisJson) as AnalysisArea[];
 
-  const report = evaluateReadiness({
+  const reportBase = evaluateReadiness({
     items,
     requestedAreas: requestedAnalysis,
     packageIds,
@@ -549,6 +958,13 @@ function evaluateAndPersistReadiness(
     marketplace: "US",
     runId
   });
+  const report = readiness.applyTypedProceduralRules
+    ? readiness.applyTypedProceduralRules({
+        report: reportBase,
+        items,
+        requestedAreas: requestedAnalysis
+      })
+    : reportBase;
 
   const artifactMeta = readiness.artifactStore.writeJson(report, {
     subdir: "readiness",

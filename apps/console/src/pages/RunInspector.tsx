@@ -8,6 +8,7 @@ import {
   type ReadinessReport,
   type RunEvent
 } from "../api";
+import { phaseDisplayLabel } from "../phase-labels";
 
 /**
  * Run Inspector: canonical status, readiness, revision actions, reviewer timeline.
@@ -35,6 +36,28 @@ export function RunInspector() {
   >([]);
   const [learning, setLearning] = useState<
     Array<{ eventType: string; reasonCode: string | null; createdAt: string }>
+  >([]);
+  const [experience, setExperience] = useState<{
+    experienceId: string;
+    runId: string;
+    status: string;
+    attempt: number;
+    operation: string;
+    tokenInput: number;
+    tokenOutput: number;
+    costUsd: number;
+    summary?: string;
+    completedAt?: string | null;
+  } | null>(null);
+  const [evaluations, setEvaluations] = useState<
+    Array<{
+      evaluationId: string;
+      evaluatorType: string;
+      decision: string;
+      sourceSystem: string;
+      sourceRecordId: string;
+      createdAt: string;
+    }>
   >([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,6 +103,22 @@ export function RunInspector() {
           if (!cancelled) setLearning(learn.learningEvents);
         } catch {
           if (!cancelled) setLearning([]);
+        }
+        try {
+          const exp = await api.getRunExperience(runId);
+          if (cancelled) return;
+          setExperience(exp);
+          try {
+            const evals = await api.listExperienceEvaluations(exp.experienceId);
+            if (!cancelled) setEvaluations(evals.evaluations);
+          } catch {
+            if (!cancelled) setEvaluations([]);
+          }
+        } catch {
+          if (!cancelled) {
+            setExperience(null);
+            setEvaluations([]);
+          }
         }
         try {
           const diff = await api.getRevisionDiff(runId);
@@ -155,10 +194,11 @@ export function RunInspector() {
         <h2>Run status</h2>
         <p>
           <span className={`badge ${terminal ? (run.status === "completed" ? "ok" : "warn") : "ok"}`}>
-            {run.status}
+            {phaseDisplayLabel(run.status)}
           </span>{" "}
           <span className="muted">
-            phase: {run.currentPhase ?? "—"} · attempt {run.attemptNumber}
+            phase: {run.currentPhase ? phaseDisplayLabel(run.currentPhase) : "—"} · attempt{" "}
+            {run.attemptNumber}
           </span>
         </p>
         <dl>
@@ -255,6 +295,55 @@ export function RunInspector() {
           </div>
         </section>
       ) : null}
+
+      <section className="card" data-testid="experience-panel">
+        <h2>Experience</h2>
+        {experience ? (
+          <>
+            <p>
+              <span className={`badge ${experience.status === "completed" ? "ok" : "warn"}`}>
+                {experience.status}
+              </span>{" "}
+              <span className="muted">
+                attempt {experience.attempt} · {experience.operation}
+              </span>
+            </p>
+            <dl>
+              <dt>Experience ID</dt>
+              <dd data-testid="experience-id">{experience.experienceId}</dd>
+              <dt>Tokens</dt>
+              <dd>
+                in {experience.tokenInput} / out {experience.tokenOutput}
+              </dd>
+              <dt>Cost (USD)</dt>
+              <dd>{experience.costUsd}</dd>
+              <dt>Completed</dt>
+              <dd>{experience.completedAt ?? "—"}</dd>
+              <dt>Summary</dt>
+              <dd>{experience.summary ?? "—"}</dd>
+            </dl>
+            {evaluations.length > 0 ? (
+              <>
+                <h3>Evaluations</h3>
+                <ul className="checks" data-testid="experience-evaluations">
+                  {evaluations.map((e) => (
+                    <li key={e.evaluationId}>
+                      <strong>{e.evaluatorType}</strong> · {e.decision}
+                      <div className="muted">
+                        {e.sourceSystem} · {e.sourceRecordId}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="muted">No evaluations yet.</p>
+            )}
+          </>
+        ) : (
+          <p className="muted">Experience not captured yet.</p>
+        )}
+      </section>
 
       <section className="card" data-testid="readiness-drill-in">
         <h2>Evidence readiness</h2>

@@ -135,6 +135,18 @@ export function findingsRoutes(container: Container): Router {
       });
       container.repos.findings.updateValidation(finding.findingId, validationStatus, now);
 
+      container.experienceService?.recordFromLegacy({
+        runId: finding.runId,
+        evaluatorType: "human",
+        decision: parsed.data.action,
+        sourceSystem: "maa.finding_reviews",
+        sourceRecordId: reviewId,
+        scores: {
+          reasonCode: parsed.data.reasonCode ?? null,
+          findingId: finding.findingId
+        }
+      });
+
       const run = container.repos.runs.getById(finding.runId);
       const analysisRequest = run ? container.repos.requests.getById(run.requestId) : undefined;
       const learningEventId = container.revisionService.recordFindingLearningEvent({

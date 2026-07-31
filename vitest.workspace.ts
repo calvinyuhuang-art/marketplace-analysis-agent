@@ -17,7 +17,8 @@ const alias = {
   "@maa/wiki": resolve("packages/wiki/src/index.ts"),
   "@maa/quality": resolve("packages/quality/src/index.ts"),
   "@maa/client": resolve("packages/client/src/index.ts"),
-  "@maa/ops": resolve("packages/ops/src/index.ts")
+  "@maa/ops": resolve("packages/ops/src/index.ts"),
+  "@maa/agent-memory-contracts": resolve("packages/agent-memory-contracts/src/index.ts")
 };
 
 export default defineWorkspace([

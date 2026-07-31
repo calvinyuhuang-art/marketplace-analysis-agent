@@ -60,3 +60,49 @@ describe("M9 feature flag", () => {
     expect(isResearchTeamMaaEnabled({ MAA_RESEARCH_TEAM_ADAPTER: "yes" })).toBe(true);
   });
 });
+
+describe("N6 client surface helpers", () => {
+  it("createComparativeAnalysis builds comparative operation payload", async () => {
+    const { MarketplaceAnalysisClient } = await import("./client.js");
+    let captured: unknown;
+    const client = new MarketplaceAnalysisClient({
+      baseUrl: "http://maa.test",
+      fetchImpl: (async (_url, init) => {
+        captured = JSON.parse(String(init?.body ?? "{}"));
+        return new Response(
+          JSON.stringify({
+            requestId: "req_1",
+            runId: "run_1",
+            projectId: "proj_1",
+            status: "accepted",
+            currentPhase: "accepted",
+            operation: "comparative_analysis",
+            correlationId: null,
+            statusUrl: "/v1/analysis-runs/run_1",
+            createdAt: "2026-07-28T00:00:00.000Z"
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        );
+      }) as typeof fetch
+    });
+    await client.createComparativeAnalysis({
+      client: "research-team",
+      projectId: "proj_1",
+      capability: {
+        platform: "amazon",
+        marketplace: "US",
+        category: "books",
+        productType: "adult_coloring_book"
+      },
+      productContext: { name: "T", salesGoal: "G", constraints: [] },
+      requestedAnalysis: ["pricing"],
+      evidencePackageIds: ["evpkg_compare"],
+      baselineEvidencePackageIds: ["evpkg_base"]
+    });
+    expect(captured).toMatchObject({
+      operation: "comparative_analysis",
+      evidencePackageIds: ["evpkg_compare"],
+      baselineEvidencePackageIds: ["evpkg_base"]
+    });
+  });
+});

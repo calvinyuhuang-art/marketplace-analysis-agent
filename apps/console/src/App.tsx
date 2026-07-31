@@ -31,6 +31,12 @@ export function App() {
             Error Book
           </NavLink>
           <NavLink
+            to="/outcomes"
+            className={({ isActive }) => (isActive ? "active" : "")}
+          >
+            Outcomes
+          </NavLink>
+          <NavLink
             to="/memory-governor"
             className={({ isActive }) => (isActive ? "active" : "")}
           >
@@ -38,6 +44,12 @@ export function App() {
           </NavLink>
           <NavLink to="/wiki" className={({ isActive }) => (isActive ? "active" : "")}>
             Wiki
+          </NavLink>
+          <NavLink
+            to="/learning-plane"
+            className={({ isActive }) => (isActive ? "active" : "")}
+          >
+            Learning Plane
           </NavLink>
           <NavLink
             to="/test-console"

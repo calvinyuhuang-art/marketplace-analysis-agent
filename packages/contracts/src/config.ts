@@ -35,7 +35,10 @@ export const CONFIG_PROFILE_DEFAULTS: Record<
     MAA_HOST: "127.0.0.1",
     MAA_ARTIFACT_RETENTION_DAYS: "30",
     MAA_REQUIRE_API_KEY: "true",
-    MAA_DEFAULT_MODEL_PROFILE: "mock-only"
+    MAA_DEFAULT_MODEL_PROFILE: "mock-only",
+    MAA_LEARNING_PLANE_ENABLED: "false",
+    MAA_LEARNING_PLANE_PUBLISH_ENABLED: "false",
+    MAA_LEARNING_PLANE_RECEIVE_ENABLED: "false"
   }
 };
 
@@ -76,7 +79,33 @@ export const ConfigSchema = z.object({
    * Delete artifact files older than N days (0 = retention disabled).
    * Runs on demand via admin/CLI — not a background cloud sweeper.
    */
-  MAA_ARTIFACT_RETENTION_DAYS: z.coerce.number().int().nonnegative().default(0)
+  MAA_ARTIFACT_RETENTION_DAYS: z.coerce.number().int().nonnegative().default(0),
+  /** Distinct runs with same gap fingerprint in one project before project warning. */
+  MAA_GAP_PROJECT_WARNING_THRESHOLD: z.coerce.number().int().positive().default(2),
+  /** Distinct projects with same fingerprint before broader promotion eligibility. */
+  MAA_GAP_CROSS_PROJECT_PROMOTION_THRESHOLD: z.coerce.number().int().positive().default(2),
+
+  /** Learning Plane adapter (LP8-I1). All flags default off. */
+  MAA_LEARNING_PLANE_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_PUBLISH_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_RECEIVE_ENABLED: booleanFromEnv.default(false),
+  MAA_LEARNING_PLANE_BASE_URL: z.string().default("http://127.0.0.1:4330"),
+  MAA_LEARNING_PLANE_AGENT_ID: z.string().min(1).default("marketplace-analysis-agent"),
+  MAA_LEARNING_PLANE_CALLBACK_HOST: z.string().min(1).default("127.0.0.1"),
+  MAA_LEARNING_PLANE_CALLBACK_PATH: z
+    .string()
+    .regex(/^\//, "callback path must start with /")
+    .default("/v1/learning-plane/deliveries"),
+  MAA_LEARNING_PLANE_HEALTH_REPORT_INTERVAL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60),
+  MAA_LEARNING_PLANE_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  MAA_LEARNING_PLANE_SECRET_FILE: z
+    .string()
+    .min(1)
+    .default("./data/secrets/learning-plane-adapter.json")
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -84,7 +113,8 @@ export type Config = z.infer<typeof ConfigSchema>;
 /** Keys whose values must never be logged. */
 export const SECRET_CONFIG_KEYS: ReadonlySet<string> = new Set([
   "DEEPSEEK_API_KEY",
-  "MAA_API_KEY"
+  "MAA_API_KEY",
+  "MAA_LEARNING_PLANE_OPERATOR_TOKEN"
 ]);
 
 /** Apply profile defaults then env (env wins). */

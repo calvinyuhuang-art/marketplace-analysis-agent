@@ -78,6 +78,10 @@ export interface AnalysisPromptPayload {
   proceduralRules: import("@maa/contracts").ProceduralRulePromptItem[];
   outputSchemaVersion: string;
   requiredOutputExample: typeof REQUIRED_OUTPUT_EXAMPLE;
+  /** Present for comparative_analysis — baseline side items. */
+  baselineEvidenceItems?: AnalysisPromptPayload["evidenceItems"];
+  /** Present for comparative_analysis — compare/current side items. */
+  compareEvidenceItems?: AnalysisPromptPayload["evidenceItems"];
 }
 
 export function buildAnalysisPromptPayload(input: {
@@ -87,11 +91,13 @@ export function buildAnalysisPromptPayload(input: {
   plan: AnalysisPlan;
   readiness?: ReadinessReport;
   evidenceItems: EvidenceItem[];
+  baselineEvidenceItems?: EvidenceItem[];
+  compareEvidenceItems?: EvidenceItem[];
   approvedMemory?: MemoryPromptItem[];
   failureCorrections?: MemoryPromptItem[];
   proceduralRules?: import("@maa/contracts").ProceduralRulePromptItem[];
 }): AnalysisPromptPayload {
-  const evidenceItems = input.evidenceItems.map((item) => ({
+  const mapItem = (item: EvidenceItem) => ({
     evidenceId: item.evidenceId,
     sourceType: item.sourceType,
     subjectId: item.subjectId,
@@ -99,7 +105,9 @@ export function buildAnalysisPromptPayload(input: {
     textContent: item.textContent?.slice(0, 800),
     fields: item.fields,
     observedAt: item.provenance.observedAt
-  }));
+  });
+
+  const evidenceItems = input.evidenceItems.map(mapItem);
 
   return {
     operation: input.operation,
@@ -112,7 +120,9 @@ export function buildAnalysisPromptPayload(input: {
     failureCorrections: input.failureCorrections ?? [],
     proceduralRules: input.proceduralRules ?? [],
     outputSchemaVersion: input.plan.schemaVersion,
-    requiredOutputExample: REQUIRED_OUTPUT_EXAMPLE
+    requiredOutputExample: REQUIRED_OUTPUT_EXAMPLE,
+    baselineEvidenceItems: input.baselineEvidenceItems?.map(mapItem),
+    compareEvidenceItems: input.compareEvidenceItems?.map(mapItem)
   };
 }
 

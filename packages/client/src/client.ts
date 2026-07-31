@@ -56,6 +56,11 @@ function assertOk<T>(
 /**
  * Typed HTTP client for Marketplace Analysis Agent.
  * Never reads or writes the MAA database — API only.
+ *
+ * Compatibility (N7 / service ≥ 0.17.0):
+ * - Expects `x-maa-api-compat: 2026.07` on `/v1/*` responses.
+ * - Do not send `propose_memory_update` (removed public op → use `/v1/memory-proposals`).
+ * - See `MIN_SERVER_VERSION` from `@maa/client`.
  */
 export class MarketplaceAnalysisClient {
   constructor(private readonly opts: MarketplaceAnalysisClientOptions) {}
@@ -258,6 +263,211 @@ export class MarketplaceAnalysisClient {
       requestOpts
     );
     return assertOk(res.status, res.data, [200, 202], res.correlationId);
+  }
+
+  async getRunExperience(
+    runId: string,
+    requestOpts?: RequestOptions
+  ): Promise<Record<string, unknown>> {
+    const res = await httpJson<Record<string, unknown>>(
+      this.opts,
+      "GET",
+      `/v1/analysis-runs/${encodeURIComponent(runId)}/experience`,
+      undefined,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 200, res.correlationId);
+  }
+
+  async listExperienceEvaluations(
+    experienceId: string,
+    requestOpts?: RequestOptions
+  ): Promise<{ experienceId: string; evaluations: unknown[] }> {
+    const res = await httpJson<{ experienceId: string; evaluations: unknown[] }>(
+      this.opts,
+      "GET",
+      `/v1/experiences/${encodeURIComponent(experienceId)}/evaluations`,
+      undefined,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 200, res.correlationId);
+  }
+
+  async registerCollectorSnapshot(
+    input: Record<string, unknown>,
+    requestOpts?: RequestOptions
+  ): Promise<{ artifactId: string; contentHash: string }> {
+    const res = await httpJson<{ artifactId: string; contentHash: string }>(
+      this.opts,
+      "POST",
+      "/v1/collector-capability-snapshots",
+      input,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 201, res.correlationId);
+  }
+
+  async createEvidencePlan(
+    input: Record<string, unknown>,
+    requestOpts?: RequestOptions
+  ): Promise<Record<string, unknown>> {
+    const res = await httpJson<Record<string, unknown>>(
+      this.opts,
+      "POST",
+      "/v1/evidence-plans",
+      input,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 201, res.correlationId);
+  }
+
+  async getEvidencePlan(
+    planId: string,
+    requestOpts?: RequestOptions & { version?: number }
+  ): Promise<Record<string, unknown>> {
+    const q =
+      requestOpts?.version !== undefined ? `?version=${requestOpts.version}` : "";
+    const res = await httpJson<Record<string, unknown>>(
+      this.opts,
+      "GET",
+      `/v1/evidence-plans/${encodeURIComponent(planId)}${q}`,
+      undefined,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 200, res.correlationId);
+  }
+
+  async reviewEvidencePlan(
+    planId: string,
+    input: Record<string, unknown> = {},
+    requestOpts?: RequestOptions
+  ): Promise<Record<string, unknown>> {
+    const res = await httpJson<Record<string, unknown>>(
+      this.opts,
+      "POST",
+      `/v1/evidence-plans/${encodeURIComponent(planId)}/review`,
+      input,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, [200, 202], res.correlationId);
+  }
+
+  async getCapabilities(
+    requestOpts?: RequestOptions
+  ): Promise<{ capabilities: unknown[] }> {
+    const res = await httpJson<{ capabilities: unknown[] }>(
+      this.opts,
+      "GET",
+      "/v1/capabilities",
+      undefined,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 200, res.correlationId);
+  }
+
+  async getWorkflowFeedback(
+    feedbackId: string,
+    requestOpts?: RequestOptions
+  ): Promise<Record<string, unknown>> {
+    const res = await httpJson<Record<string, unknown>>(
+      this.opts,
+      "GET",
+      `/v1/workflow-feedback/${encodeURIComponent(feedbackId)}`,
+      undefined,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 200, res.correlationId);
+  }
+
+  async listRunWorkflowFeedback(
+    runId: string,
+    requestOpts?: RequestOptions
+  ): Promise<{ events: unknown[] }> {
+    const res = await httpJson<{ events: unknown[] }>(
+      this.opts,
+      "GET",
+      `/v1/analysis-runs/${encodeURIComponent(runId)}/workflow-feedback`,
+      undefined,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 200, res.correlationId);
+  }
+
+  async resolveWorkflowFeedback(
+    feedbackId: string,
+    input: Record<string, unknown>,
+    requestOpts?: RequestOptions
+  ): Promise<Record<string, unknown>> {
+    const res = await httpJson<Record<string, unknown>>(
+      this.opts,
+      "POST",
+      `/v1/workflow-feedback/${encodeURIComponent(feedbackId)}/resolve`,
+      input,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 200, res.correlationId);
+  }
+
+  async ingestOutcome(
+    input: Record<string, unknown>,
+    requestOpts?: RequestOptions
+  ): Promise<Record<string, unknown>> {
+    const res = await httpJson<Record<string, unknown>>(
+      this.opts,
+      "POST",
+      "/v1/outcomes",
+      input,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 201, res.correlationId);
+  }
+
+  async getOutcome(
+    outcomeId: string,
+    requestOpts?: RequestOptions
+  ): Promise<Record<string, unknown>> {
+    const res = await httpJson<Record<string, unknown>>(
+      this.opts,
+      "GET",
+      `/v1/outcomes/${encodeURIComponent(outcomeId)}`,
+      undefined,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, 200, res.correlationId);
+  }
+
+  async reassessOutcome(
+    outcomeId: string,
+    input: Record<string, unknown> = {},
+    requestOpts?: RequestOptions
+  ): Promise<Record<string, unknown>> {
+    const res = await httpJson<Record<string, unknown>>(
+      this.opts,
+      "POST",
+      `/v1/outcomes/${encodeURIComponent(outcomeId)}/reassess`,
+      input,
+      requestOpts
+    );
+    return assertOk(res.status, res.data, [200, 202], res.correlationId);
+  }
+
+  /**
+   * Helper for comparative_analysis — validates body via CreateAnalysisRequestSchema.
+   */
+  async createComparativeAnalysis(
+    input: Omit<CreateAnalysisRequest, "operation"> & {
+      baselineEvidencePackageIds: string[];
+      evidencePackageIds: string[];
+    },
+    requestOpts?: RequestOptions
+  ): Promise<AnalysisRequestResponse> {
+    return this.createAnalysis(
+      {
+        ...input,
+        operation: "comparative_analysis"
+      },
+      requestOpts
+    );
   }
 
   /**

@@ -14,6 +14,8 @@ export type RequestOptions = {
   correlationId?: string;
   idempotencyKey?: string;
   signal?: AbortSignal;
+  /** Extra request headers (e.g. X-Maa-Allow-Deprecated). */
+  headers?: Record<string, string>;
 };
 
 export async function httpJson<T>(
@@ -40,6 +42,11 @@ export async function httpJson<T>(
   }
   if (opts.apiKey) {
     headers.Authorization = `Bearer ${opts.apiKey}`;
+  }
+  if (requestOpts?.headers) {
+    for (const [k, v] of Object.entries(requestOpts.headers)) {
+      headers[k] = v;
+    }
   }
 
   const controller = new AbortController();

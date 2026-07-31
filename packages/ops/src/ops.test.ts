@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { Database } from "@maa/database";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Database, runMigrations } from "@maa/database";
 import {
   checkDatabaseIntegrity,
   createBackup,
   restoreBackup,
   purgeExpiredArtifacts
 } from "./index.js";
+
+const MIGRATIONS_DIR = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../migrations"
+);
 
 describe("M10 ops: integrity, backup, retention", () => {
   it("reports integrity ok for a fresh db", () => {
@@ -31,19 +37,130 @@ describe("M10 ops: integrity, backup, retention", () => {
       const backup = createBackup({
         databasePath: dbPath,
         backupDir,
-        serviceVersion: "0.10.0",
+        serviceVersion: "0.11.0",
+        databaseSchemaVersion: "0000",
         notes: "unit"
       });
       expect(backup.manifest.schemaVersion).toBe("maa-backup.v1");
+      expect(backup.manifest.databaseSchemaVersion).toBe("0000");
+      expect(backup.manifest.artifactManifestVersion).toBeDefined();
       expect(backup.manifest.integrity?.ok).toBe(true);
 
-      // wipe and restore
       rmSync(dbPath, { force: true });
-      restoreBackup({ backupPath: backup.backupPath, databasePath: dbPath });
+      restoreBackup({
+        backupPath: backup.backupPath,
+        databasePath: dbPath,
+        maxSupportedDatabaseSchemaVersion: "0009"
+      });
       const restored = Database.open({ path: dbPath });
       const row = restored.db.prepare("SELECT id FROM t").get() as { id: number };
       expect(row.id).toBe(1);
       restored.close();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("backup/restore preserves N1–N6 tables through schema 0016", () => {
+    const root = mkdtempSync(join(tmpdir(), "maa-ops-n7-"));
+    try {
+      const dbPath = join(root, "maa.sqlite");
+      const backupDir = join(root, "backups");
+      const db = Database.open({ path: dbPath });
+      const migrated = runMigrations(db.db, MIGRATIONS_DIR);
+      expect(migrated.applied.length).toBeGreaterThan(0);
+      db.close();
+
+      const backup = createBackup({
+        databasePath: dbPath,
+        backupDir,
+        serviceVersion: "0.19.0",
+        databaseSchemaVersion: "0016",
+        notes: "lp8-i1-coverage"
+      });
+      expect(backup.manifest.schemaVersion).toBe("maa-backup.v1");
+      expect(backup.manifest.databaseSchemaVersion).toBe("0016");
+
+      const restoredPath = join(root, "restored.sqlite");
+      restoreBackup({
+        backupPath: backup.backupPath,
+        databasePath: restoredPath,
+        maxSupportedDatabaseSchemaVersion: "0016"
+      });
+
+      const restored = Database.open({ path: restoredPath });
+      const tables = (
+        restored.db
+          .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+          .all() as { name: string }[]
+      ).map((t) => t.name);
+
+      for (const name of [
+        "agent_experiences",
+        "agent_evaluations",
+        "evidence_plans",
+        "evidence_plan_reviews",
+        "gap_fingerprints",
+        "workflow_feedback_events",
+        "procedural_rule_definitions",
+        "procedural_rule_versions",
+        "procedural_rule_activations",
+        "outcome_events",
+        "outcome_reassessments",
+        "lp_adapter_settings",
+        "lp_adapter_outbox",
+        "lp_adapter_inbox",
+        "lp_adapter_acknowledgements",
+        "lp_adapter_processing_events"
+      ]) {
+        expect(tables).toContain(name);
+      }
+
+      const cols = (
+        restored.db.prepare("PRAGMA table_info(analysis_requests)").all() as {
+          name: string;
+        }[]
+      ).map((c) => c.name);
+      expect(cols).toContain("baseline_evidence_package_ids_json");
+
+      const versions = (
+        restored.db
+          .prepare("SELECT version FROM schema_migrations ORDER BY version")
+          .all() as { version: string }[]
+      ).map((v) => v.version);
+      expect(versions).toContain("0009");
+      expect(versions).toContain("0014");
+      expect(versions).toContain("0016");
+      restored.close();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects restore when databaseSchemaVersion is newer than binary", () => {
+    const root = mkdtempSync(join(tmpdir(), "maa-ops-future-"));
+    try {
+      const dbPath = join(root, "maa.sqlite");
+      const backupDir = join(root, "backups");
+      const db = Database.open({ path: dbPath });
+      db.db.exec("CREATE TABLE t (id INTEGER PRIMARY KEY); INSERT INTO t VALUES (1);");
+      db.close();
+
+      const backup = createBackup({
+        databasePath: dbPath,
+        backupDir,
+        serviceVersion: "0.11.0",
+        databaseSchemaVersion: "0099",
+        notes: "future"
+      });
+
+      expect(() =>
+        restoreBackup({
+          backupPath: backup.backupPath,
+          databasePath: join(root, "restored.sqlite"),
+          maxSupportedDatabaseSchemaVersion: "0009"
+        })
+      ).toThrow(/newer than supported/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

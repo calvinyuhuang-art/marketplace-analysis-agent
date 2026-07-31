@@ -85,6 +85,10 @@ export interface AnalysisRequestRow {
   idempotencyKey: string | null;
   requestHash: string | null;
   status: string;
+  evidencePlanId: string | null;
+  evidencePlanVersion: number | null;
+  outcomeId: string | null;
+  baselineEvidencePackageIdsJson: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -106,6 +110,15 @@ function mapRequest(r: Record<string, unknown>): AnalysisRequestRow {
     idempotencyKey: (r.idempotency_key as string | null) ?? null,
     requestHash: (r.request_hash as string | null) ?? null,
     status: r.status as string,
+    evidencePlanId: (r.evidence_plan_id as string | null) ?? null,
+    evidencePlanVersion:
+      r.evidence_plan_version === null || r.evidence_plan_version === undefined
+        ? null
+        : (r.evidence_plan_version as number),
+    outcomeId: (r.outcome_id as string | null) ?? null,
+    baselineEvidencePackageIdsJson: String(
+      r.baseline_evidence_package_ids_json ?? "[]"
+    ),
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string
   };
@@ -121,12 +134,14 @@ export class AnalysisRequestsRepository {
           (request_id, project_id, client, client_request_id, external_work_order_id,
            operation, requested_analysis_json, question, capability_id, capability_version,
            model_profile_id, request_payload_artifact_id, idempotency_key, request_hash,
-           status, created_at, updated_at)
+           status, evidence_plan_id, evidence_plan_version, outcome_id,
+           baseline_evidence_package_ids_json, created_at, updated_at)
          VALUES
           (@requestId, @projectId, @client, @clientRequestId, @externalWorkOrderId,
            @operation, @requestedAnalysisJson, @question, @capabilityId, @capabilityVersion,
            @modelProfileId, @requestPayloadArtifactId, @idempotencyKey, @requestHash,
-           @status, @createdAt, @updatedAt)`
+           @status, @evidencePlanId, @evidencePlanVersion, @outcomeId,
+           @baselineEvidencePackageIdsJson, @createdAt, @updatedAt)`
       )
       .run(row);
   }

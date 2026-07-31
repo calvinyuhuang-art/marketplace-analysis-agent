@@ -370,7 +370,11 @@ export class LearningService {
     return this.deps.proceduralRules.list(filter).map((r) => this.toRule(r));
   }
 
-  /** Active rules for context assembly — authority and scope enforced. */
+  /**
+   * Active rules for context assembly.
+   * Free-form rows remain prompt-only (N4): requireDirectCustomerEvidence is never
+   * set from free-form — typed registry supplies runtime-capable flags.
+   */
   resolveActiveProceduralRules(input: {
     projectId?: string;
     platform?: string;
@@ -393,7 +397,7 @@ export class LearningService {
         title: r.title,
         statement: r.statement,
         analysisAreas: parseAreas(r.analysisAreasJson),
-        requireDirectCustomerEvidence: r.requireDirectCustomerEvidence === 1
+        requireDirectCustomerEvidence: false
       }));
   }
 

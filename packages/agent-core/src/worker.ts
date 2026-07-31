@@ -24,6 +24,10 @@ export interface WorkerOptions {
   readiness?: FakeWorkflowOptions["readiness"];
   analysis?: FakeWorkflowOptions["analysis"];
   memory?: FakeWorkflowOptions["memory"];
+  experience?: FakeWorkflowOptions["experience"];
+  planReview?: FakeWorkflowOptions["planReview"];
+  workflowFeedback?: FakeWorkflowOptions["workflowFeedback"];
+  outcomeReassess?: FakeWorkflowOptions["outcomeReassess"];
 }
 
 /**
@@ -183,7 +187,11 @@ export class DurableWorker {
         sleep: this.options.sleep,
         readiness: this.options.readiness,
         analysis: this.options.analysis,
-        memory: this.options.memory
+        memory: this.options.memory,
+        experience: this.options.experience,
+        planReview: this.options.planReview,
+        workflowFeedback: this.options.workflowFeedback,
+        outcomeReassess: this.options.outcomeReassess
       };
 
       try {

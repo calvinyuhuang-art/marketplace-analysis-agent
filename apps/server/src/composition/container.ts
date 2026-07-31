@@ -38,6 +38,17 @@ import {
   WikiSourceLinksRepository,
   WikiUpdateProposalsRepository,
   WikiLintIssuesRepository,
+  AgentExperiencesRepository,
+  AgentEvaluationsRepository,
+  EvidencePlansRepository,
+  EvidencePlanReviewsRepository,
+  GapFingerprintsRepository,
+  WorkflowFeedbackRepository,
+  ProceduralRuleDefinitionsRepository,
+  ProceduralRuleVersionsRepository,
+  ProceduralRuleActivationsRepository,
+  OutcomeEventsRepository,
+  OutcomeReassessmentsRepository,
   runMigrations
 } from "@maa/database";
 import { ArtifactStore } from "@maa/artifacts";
@@ -45,8 +56,14 @@ import { AuditLog } from "@maa/audit";
 import { AnalysisService, DurableWorker, RevisionService } from "@maa/agent-core";
 import { registerAnalysisFixtures, runStructuredAnalysis } from "@maa/analysis";
 import { type CapabilitySummary } from "@maa/contracts";
-import { EvidenceService } from "@maa/evidence";
-import { LearningService } from "@maa/learning";
+import { EvidencePlanService, EvidenceService } from "@maa/evidence";
+import {
+  ExperienceService,
+  LearningService,
+  OutcomeService,
+  TypedProceduralService,
+  WorkflowFeedbackService
+} from "@maa/learning";
 import { LoggingManager, type Logger } from "@maa/logging";
 import { MemoryService, MemoryGovernorService, saveWorkingMemoryFromFindings } from "@maa/memory";
 import { WikiService } from "@maa/wiki";
@@ -60,15 +77,22 @@ import type { ResolvedConfig } from "../config/index";
 import { LatencyTracker } from "../middleware/request-metrics";
 import { CAPABILITIES } from "./capabilities";
 import { Counters } from "./metrics";
+import {
+  createLearningPlaneAdapter,
+  type LearningPlaneAdapter
+} from "../integrations/learning-plane/index";
 
 export const SERVICE_NAME = "marketplace-analysis-agent";
-export const SERVICE_VERSION = "0.10.0";
+export const SERVICE_VERSION = "0.19.1";
+/** Highest migration version this binary ships (keep in sync with migrations/). */
+export const CURRENT_DATABASE_SCHEMA_VERSION = "0016";
 export interface Container {
   config: ResolvedConfig;
   instanceId: string;
   startedAt: number;
   serviceName: string;
   serviceVersion: string;
+  databaseSchemaVersion: string;
   logging: LoggingManager;
   loggers: {
     application: Logger;
@@ -118,16 +142,33 @@ export interface Container {
     wikiSourceLinks: WikiSourceLinksRepository;
     wikiProposals: WikiUpdateProposalsRepository;
     wikiLintIssues: WikiLintIssuesRepository;
+    experiences: AgentExperiencesRepository;
+    evaluations: AgentEvaluationsRepository;
+    evidencePlans: EvidencePlansRepository;
+    evidencePlanReviews: EvidencePlanReviewsRepository;
+    gapFingerprints: GapFingerprintsRepository;
+    workflowFeedback: WorkflowFeedbackRepository;
+    proceduralRuleDefinitions: ProceduralRuleDefinitionsRepository;
+    proceduralRuleVersions: ProceduralRuleVersionsRepository;
+    proceduralRuleActivations: ProceduralRuleActivationsRepository;
+    outcomeEvents: OutcomeEventsRepository;
+    outcomeReassessments: OutcomeReassessmentsRepository;
   };
   artifactStore: ArtifactStore;
   auditLog: AuditLog;
   evidenceService: EvidenceService;
+  evidencePlanService: EvidencePlanService;
   analysisService: AnalysisService;
   revisionService: RevisionService;
   memoryService: MemoryService;
   learningService: LearningService;
+  experienceService: ExperienceService;
+  workflowFeedbackService: WorkflowFeedbackService;
+  typedProceduralService: TypedProceduralService;
+  outcomeService: OutcomeService;
   memoryGovernor: MemoryGovernorService;
   wikiService: WikiService;
+  learningPlane: LearningPlaneAdapter | null;
   worker: DurableWorker;
   providers: { fake: FakeProvider } & Record<string, ModelProvider>;
   metrics: Counters;
@@ -210,8 +251,26 @@ export function createContainer(
     wikiVersions: new WikiPageVersionsRepository(database.db),
     wikiSourceLinks: new WikiSourceLinksRepository(database.db),
     wikiProposals: new WikiUpdateProposalsRepository(database.db),
-    wikiLintIssues: new WikiLintIssuesRepository(database.db)
+    wikiLintIssues: new WikiLintIssuesRepository(database.db),
+    experiences: new AgentExperiencesRepository(database.db),
+    evaluations: new AgentEvaluationsRepository(database.db),
+    evidencePlans: new EvidencePlansRepository(database.db),
+    evidencePlanReviews: new EvidencePlanReviewsRepository(database.db),
+    gapFingerprints: new GapFingerprintsRepository(database.db),
+    workflowFeedback: new WorkflowFeedbackRepository(database.db),
+    proceduralRuleDefinitions: new ProceduralRuleDefinitionsRepository(database.db),
+    proceduralRuleVersions: new ProceduralRuleVersionsRepository(database.db),
+    proceduralRuleActivations: new ProceduralRuleActivationsRepository(database.db),
+    outcomeEvents: new OutcomeEventsRepository(database.db),
+    outcomeReassessments: new OutcomeReassessmentsRepository(database.db)
   };
+
+  const databaseSchemaVersion = (() => {
+    const row = database.db
+      .prepare(`SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1`)
+      .get() as { version: string } | undefined;
+    return row?.version ?? CURRENT_DATABASE_SCHEMA_VERSION;
+  })();
 
   const deepseekReady =
     config.raw.MAA_DEEPSEEK_ENABLED && config.raw.DEEPSEEK_API_KEY.trim().length > 0;
@@ -265,6 +324,15 @@ export function createContainer(
     artifactStore
   });
 
+  const evidencePlanService = new EvidencePlanService({
+    db: database.db,
+    plans: repos.evidencePlans,
+    reviews: repos.evidencePlanReviews,
+    artifacts: repos.artifacts,
+    artifactStore,
+    capabilities: CAPABILITIES
+  });
+
   const analysisService = new AnalysisService({
     db: database.db,
     projects: repos.projects,
@@ -280,6 +348,34 @@ export function createContainer(
     capabilities: CAPABILITIES,
     defaultModelProfileId: config.raw.MAA_DEFAULT_MODEL_PROFILE,
     defaultTimeoutSeconds: config.raw.MAA_DEFAULT_TIMEOUT_SECONDS
+  });
+
+  const experienceService = new ExperienceService({
+    experiences: repos.experiences,
+    evaluations: repos.evaluations
+  });
+
+  const learningPlaneCaptureBridge: {
+    current: {
+      captureCreated: (row: import("@maa/database").WorkflowFeedbackRow) => void;
+      captureEvaluated: (row: import("@maa/database").WorkflowFeedbackRow) => void;
+    } | null;
+  } = { current: null };
+
+  const workflowFeedbackService = new WorkflowFeedbackService({
+    feedback: repos.workflowFeedback,
+    fingerprints: repos.gapFingerprints,
+    collectionRequests: repos.collectionRequests,
+    artifacts: repos.artifacts,
+    artifactStore,
+    experiences: repos.experiences,
+    projectWarningThreshold: config.raw.MAA_GAP_PROJECT_WARNING_THRESHOLD,
+    crossProjectPromotionThreshold: config.raw.MAA_GAP_CROSS_PROJECT_PROMOTION_THRESHOLD,
+    db: database.db,
+    learningPlaneCapture: {
+      captureCreated: (row) => learningPlaneCaptureBridge.current?.captureCreated(row),
+      captureEvaluated: (row) => learningPlaneCaptureBridge.current?.captureEvaluated(row)
+    }
   });
 
   const revisionService = new RevisionService({
@@ -301,7 +397,32 @@ export function createContainer(
     agentLog: loggers.agent,
     assertEvidencePackagesExist: (ids) => evidenceService.assertPackagesExist(ids),
     defaultTimeoutSeconds: config.raw.MAA_DEFAULT_TIMEOUT_SECONDS,
-    defaultModelProfileId: config.raw.MAA_DEFAULT_MODEL_PROFILE
+    defaultModelProfileId: config.raw.MAA_DEFAULT_MODEL_PROFILE,
+    experienceDualWrite: {
+      recordFromLegacy: (input) => experienceService.recordFromLegacy(input)
+    },
+    workflowFeedback: {
+      attachRevision: (input) => workflowFeedbackService.attachRevision(input),
+      completeRevision: (input) => {
+        const packageIds = repos.evidencePackages
+          .listForRequest(
+            repos.runs.getById(input.revisionRunId)?.requestId ?? ""
+          )
+          .map((p) => p.packageId);
+        const items = evidenceService.getItemsForPackages(packageIds);
+        const bindingPresentInSupplemental = items.some(
+          (i) =>
+            i.sourceType === "listing" &&
+            typeof i.fields.price === "number" &&
+            typeof i.fields.binding === "string" &&
+            i.fields.binding.trim().length > 0
+        );
+        workflowFeedbackService.completeRevision({
+          ...input,
+          bindingPresentInSupplemental
+        });
+      }
+    }
   });
 
   const memoryService = new MemoryService({
@@ -324,6 +445,26 @@ export function createContainer(
     memoryEvaluations: repos.memoryEvaluations,
     learningEvents: repos.learningEvents,
     memoryItems: repos.memoryItems
+  });
+
+  const typedProceduralService = new TypedProceduralService({
+    definitions: repos.proceduralRuleDefinitions,
+    versions: repos.proceduralRuleVersions,
+    activations: repos.proceduralRuleActivations,
+    artifacts: repos.artifacts,
+    artifactStore
+  });
+
+  const outcomeService = new OutcomeService({
+    outcomes: repos.outcomeEvents,
+    reassessments: repos.outcomeReassessments,
+    experiences: repos.experiences,
+    runs: repos.runs,
+    findings: repos.findings,
+    lessons: repos.lessonCandidates,
+    artifacts: repos.artifacts,
+    artifactStore,
+    experienceService
   });
 
   const wikiService = new WikiService({
@@ -385,7 +526,8 @@ export function createContainer(
         artifacts: repos.artifacts,
         artifactStore,
         auditLog,
-        agentLog: loggers.agent
+        agentLog: loggers.agent,
+        applyTypedProceduralRules: (input) => typedProceduralService.applyToReadiness(input)
       },
       analysis: {
         run: runStructuredAnalysis,
@@ -423,8 +565,42 @@ export function createContainer(
         agentLog: loggers.memory,
         auditLog,
         projects: repos.projects,
-        resolveProceduralRules: (input) =>
-          learningService.resolveActiveProceduralRules(input)
+        resolveProceduralRules: (input) => [
+          ...learningService.resolveActiveProceduralRules(input),
+          ...typedProceduralService.resolveActivePromptItems()
+        ]
+      },
+      experience: {
+        captureStarted: (input) => {
+          experienceService.captureStarted({
+            ...input,
+            evidencePackageIds: input.evidencePackageIds ?? [],
+            inputArtifactIds: []
+          });
+        },
+        complete: (input) => {
+          experienceService.complete(input);
+        },
+        recordDeterministicEvaluation: (input) => {
+          experienceService.recordFromLegacy({
+            runId: input.runId,
+            evaluatorType: "deterministic",
+            decision: input.decision,
+            sourceSystem: "maa.deterministic",
+            sourceRecordId: input.sourceRecordId,
+            scores: input.scores
+          });
+        }
+      },
+      planReview: {
+        reviewForRun: (input) => evidencePlanService.reviewForRun(input)
+      },
+      workflowFeedback: {
+        detectLatePricingGaps: (input) =>
+          workflowFeedbackService.detectLatePricingGaps(input)
+      },
+      outcomeReassess: {
+        reassessForRun: (input) => outcomeService.reassessForRun(input)
       }
     }
   );
@@ -433,7 +609,31 @@ export function createContainer(
     worker.start();
   }
 
+  const learningPlane = createLearningPlaneAdapter({
+    rawConfig: config.raw,
+    repoRoot: config.repoRoot,
+    db: database.db,
+    feedback: repos.workflowFeedback,
+    serviceVersion: SERVICE_VERSION,
+    databaseSchemaVersion,
+    logger: loggers.application
+  });
+  learningPlaneCaptureBridge.current = learningPlane.capture;
+  // Adapter start never blocks MAA; failures are recorded as diagnostics.
+  try {
+    learningPlane.start();
+  } catch (error) {
+    loggers.application.warn(
+      {
+        eventType: "learning_plane.adapter_start_failed",
+        err: { message: error instanceof Error ? error.message : String(error) }
+      },
+      "Learning Plane adapter start failed; MAA continues"
+    );
+  }
+
   const shutdown = async (): Promise<void> => {
+    await learningPlane.stop();
     worker.stop();
     try {
       database.close();
@@ -448,6 +648,7 @@ export function createContainer(
     startedAt: Date.now(),
     serviceName: SERVICE_NAME,
     serviceVersion: SERVICE_VERSION,
+    databaseSchemaVersion,
     logging,
     loggers,
     database,
@@ -455,12 +656,18 @@ export function createContainer(
     artifactStore,
     auditLog,
     evidenceService,
+    evidencePlanService,
     analysisService,
     revisionService,
     memoryService,
     learningService,
+    experienceService,
+    workflowFeedbackService,
+    typedProceduralService,
+    outcomeService,
     memoryGovernor,
     wikiService,
+    learningPlane,
     worker,
     providers,
     metrics,

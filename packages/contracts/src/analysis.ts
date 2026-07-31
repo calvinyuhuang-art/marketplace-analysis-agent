@@ -44,10 +44,20 @@ export const CreateAnalysisRequestSchema = z
     requestedAnalysis: z.array(AnalysisArea).min(1),
     question: z.string().optional(),
     /**
-     * Opaque evidence package IDs. Existence/normalization is validated in M2;
-     * M1 accepts them as references for durable request contracts.
+     * Opaque evidence package IDs. Required for analysis ops; optional for
+     * `review_evidence_plan` / `reassess_with_outcome`.
      */
-    evidencePackageIds: z.array(z.string().min(1)).min(1),
+    evidencePackageIds: z.array(z.string().min(1)).default([]),
+    /**
+     * Baseline packages for `comparative_analysis` (compared against
+     * `evidencePackageIds`).
+     */
+    baselineEvidencePackageIds: z.array(z.string().min(1)).optional(),
+    /** Required when operation is `review_evidence_plan`. */
+    evidencePlanId: z.string().min(1).optional(),
+    evidencePlanVersion: z.number().int().positive().optional(),
+    /** Required when operation is `reassess_with_outcome`. */
+    outcomeId: z.string().min(1).optional(),
     modelProfileId: z.string().optional(),
     costCapUsd: z.number().nonnegative().optional(),
     tokenCap: z.number().int().positive().optional(),
@@ -61,6 +71,44 @@ export const CreateAnalysisRequestSchema = z
         code: "custom",
         path: ["question"],
         message: "question is required for focused_analysis_question"
+      });
+    }
+    if (value.operation === "review_evidence_plan") {
+      if (!value.evidencePlanId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["evidencePlanId"],
+          message: "evidencePlanId is required for review_evidence_plan"
+        });
+      }
+    } else if (value.operation === "reassess_with_outcome") {
+      if (!value.outcomeId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["outcomeId"],
+          message: "outcomeId is required for reassess_with_outcome"
+        });
+      }
+    } else if (value.operation === "comparative_analysis") {
+      if (value.evidencePackageIds.length < 1) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["evidencePackageIds"],
+          message: "comparative_analysis requires compare-side evidencePackageIds"
+        });
+      }
+      if ((value.baselineEvidencePackageIds?.length ?? 0) < 1) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["baselineEvidencePackageIds"],
+          message: "comparative_analysis requires baselineEvidencePackageIds"
+        });
+      }
+    } else if (value.evidencePackageIds.length < 1) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["evidencePackageIds"],
+        message: "evidencePackageIds must include at least one package"
       });
     }
   });

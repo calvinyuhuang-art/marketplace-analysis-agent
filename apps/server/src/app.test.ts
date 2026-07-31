@@ -35,8 +35,17 @@ describe("MAA server (M0 endpoints)", () => {
 
   afterAll(async () => {
     await container.shutdown();
-    rmSync(artifactRoot, { recursive: true, force: true });
-    rmSync(logRoot, { recursive: true, force: true });
+    await new Promise((r) => setTimeout(r, 100));
+    try {
+      rmSync(artifactRoot, { recursive: true, force: true });
+    } catch {
+      /* ignore Windows ENOTEMPTY races */
+    }
+    try {
+      rmSync(logRoot, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
   });
 
   it("GET /health returns ok and a correlation id header", async () => {

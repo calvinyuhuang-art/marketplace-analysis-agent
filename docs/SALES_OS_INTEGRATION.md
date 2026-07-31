@@ -1,8 +1,8 @@
 # Sales OS ↔ Marketplace Analysis Agent (MAA) Integration Guide
 
 **Audience:** Sales OS / Research Team developers  
-**MAA version:** 0.10.0  
-**Last updated:** 2026-07-27
+**MAA version:** 0.17.0  
+**Last updated:** 2026-07-28
 
 This document describes how to connect Sales OS to MAA for marketplace analysis. MAA is a **standalone HTTP service** — integrate via API or the typed client only. **Do not** read or write the MAA SQLite database.
 
@@ -10,7 +10,7 @@ This document describes how to connect Sales OS to MAA for marketplace analysis.
 
 ## 1. Project status
 
-MAA is feature-complete through **M10** (service version **0.10.0**).
+MAA is feature-complete through **M10**, plus **N1–N7** (service version **0.17.0**, schema **0014**).
 
 | Milestone | Capability |
 |---|---|
@@ -20,6 +20,14 @@ MAA is feature-complete through **M10** (service version **0.10.0**).
 | M8 | Governed wiki (memory projection) |
 | M9 | `@maa/client` + Research Team adapter |
 | M10 | Local API auth, backup/ops, config profiles |
+| N0 | Compatibility freeze (docs) |
+| N1 | Experience/evaluation capture |
+| N2 | Collector snapshots, evidence plans, plan review |
+| N3 | Workflow feedback / late-gap detect → resolve → revise |
+| N4 | Typed procedural versions + readiness prevention |
+| N5 | Outcome events + `reassess_with_outcome` |
+| N6 | Comparative analysis + client polish; Hide `propose_memory_update` |
+| N7 | Public remove of `propose_memory_update`; hardening / shared contracts |
 
 **Out of scope (separate design required):** cloud multi-tenancy, enterprise SSO/OIDC, public internet deployment.
 
@@ -34,14 +42,34 @@ Sales OS (Research Team)
   │  (never touch MAA SQLite)
   ▼
 MAA API  http://127.0.0.1:4320
+  ├─ POST /v1/collector-capability-snapshots
+  ├─ POST /v1/evidence-plans
+  ├─ POST /v1/evidence-plans/:planId/review
   ├─ POST /v1/evidence-packages
   ├─ POST /v1/analysis-requests          → 202 Accepted
+  ├─ GET  /v1/analysis-runs/:runId/workflow-feedback
+  ├─ POST /v1/workflow-feedback/:id/resolve
+  ├─ GET  /v1/typed-procedural-rules
+  ├─ POST /v1/typed-procedural-rules/:ruleType/versions
+  ├─ POST /v1/typed-procedural-versions/:versionId/{replay,approve,activate,rollback}
+  ├─ POST /v1/outcomes
+  ├─ GET  /v1/outcomes/:id
+  ├─ POST /v1/outcomes/:id/reassess
+  ├─ POST /v1/analysis-requests (incl. comparative_analysis + baselineEvidencePackageIds)
+  ├─ GET  /v1/capabilities
   ├─ GET  /v1/analysis-runs/:runId
+  ├─ GET  /v1/analysis-runs/:runId/experience
+  ├─ GET  /v1/experiences/:experienceId/evaluations
   ├─ GET  /v1/analysis-runs/:runId/readiness
   ├─ GET  /v1/analysis-runs/:runId/collection-requests
   ├─ GET  /v1/analysis-runs/:runId/findings
   └─ GET  /v1/analysis-runs/:runId/output
 ```
+
+All `/v1/*` responses include `x-maa-api-compat: 2026.07`.  
+`propose_memory_update` was **removed** from the public `OperationType` allowlist in N7
+(service ≥ 0.17.0). Direct POST returns `UNSUPPORTED_OPERATION` before any model call.
+Prefer `/v1/memory-proposals`. `@maa/client` documents `MIN_SERVER_VERSION = "0.17.0"`.
 
 MAA **does not call MCEC**. Sales OS owns the evidence-collection loop when MAA reports gaps.
 
@@ -68,7 +96,7 @@ Smoke check:
 curl http://127.0.0.1:4320/health
 ```
 
-Expected: `{"status":"ok","version":"0.10.0",...}`
+Expected: `{"status":"ok","version":"0.17.0",...}`
 
 Default mode uses the **mock provider** (`MAA_DEFAULT_MODEL_PROFILE=mock-only`) — no LLM API key required for integration testing.
 
@@ -543,8 +571,19 @@ sales-os/
 | `M9_COMPLETION.md` | Research Team integration acceptance criteria |
 | `M10_COMPLETION.md` | Auth, backup, ops |
 | `docs/THREAT_MODEL.md` | Trust boundaries and security |
+| `docs/COMPATIBILITY_MAP.md` | N0 canonical vs legacy freeze |
+| `docs/N0_ARCHITECTURE_DECISIONS.md` | Procedural versioning, snapshots, backup, UAT |
+| `docs/API_DEPRECATION_MAP.md` | Compat rules; `propose_memory_update` sunset |
+| `docs/N1_IMPLEMENTATION_PLAN.md` / `N1_COMPLETION.md` | Experience capture |
+| `docs/N2_IMPLEMENTATION_PLAN.md` / `N2_COMPLETION.md` | Evidence plans + plan review |
+| `docs/N3_IMPLEMENTATION_PLAN.md` / `N3_COMPLETION.md` | Workflow feedback / late-gap loop |
+| `docs/N4_IMPLEMENTATION_PLAN.md` / `N4_COMPLETION.md` | Typed procedural prevention |
+| `docs/N5_IMPLEMENTATION_PLAN.md` / `N5_COMPLETION.md` | Outcome events + reassessment |
+| `docs/N6_IMPLEMENTATION_PLAN.md` / `N6_COMPLETION.md` | Comparative analysis + Hide deprecation |
+| `docs/N7_IMPLEMENTATION_PLAN.md` / `N7_COMPLETION.md` | Public remove + hardening |
+| `docs/N7_LIVE_UAT.md` | Capped live DeepSeek UAT (manual) |
 | `examples/research-team-client.ts` | Minimal working client |
-| `Marketplace_Analysis_Agent_Development_Plan.md` | Full product specification |
+| `Marketplace_Analysis_Agent_Development_Plan.md` | M0–M10 product specification |
 | `.env.example` | All configuration keys |
 
 ---
@@ -552,7 +591,7 @@ sales-os/
 ## 15. Support checklist for first integration test
 
 - [ ] MAA running at `MAA_BASE_URL` (`pnpm dev`)
-- [ ] `GET /health` returns `0.10.0`
+- [ ] `GET /health` returns `0.17.0`
 - [ ] `RESEARCH_TEAM_MAA_ENABLED=true` in Sales OS
 - [ ] Auth headers configured if `MAA_API_KEY` is set on MAA
 - [ ] Evidence package registers with `201`

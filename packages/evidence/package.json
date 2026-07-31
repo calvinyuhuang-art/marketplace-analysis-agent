@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@maa/agent-memory-contracts": "workspace:*",
     "@maa/artifacts": "workspace:*",
     "@maa/contracts": "workspace:*",
     "@maa/database": "workspace:*"

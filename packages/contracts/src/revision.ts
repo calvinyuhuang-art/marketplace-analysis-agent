@@ -35,6 +35,8 @@ export const CreateRevisionRequestSchema = z.object({
   findingIds: z.array(z.string().min(1)).optional(),
   /** Extra evidence packages to attach in addition to prior packages. */
   supplementalEvidencePackageIds: z.array(z.string().min(1)).default([]),
+  /** Optional link to an open workflow feedback event (N3 late-gap loop). */
+  workflowFeedbackId: z.string().min(1).optional(),
   /**
    * Full replacement evidence set. When omitted: prior packages ∪ supplemental.
    */

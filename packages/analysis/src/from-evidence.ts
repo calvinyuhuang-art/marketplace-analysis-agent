@@ -201,6 +201,123 @@ export function generateFromEvidence(payload: AnalysisPromptPayload): AnalysisOu
   };
 }
 
+/**
+ * Deterministic comparative analysis: contrast baseline vs compare packages.
+ */
+export function generateComparativeFromEvidence(
+  payload: AnalysisPromptPayload
+): AnalysisOutput {
+  const baseline = payload.baselineEvidenceItems ?? [];
+  const compare = payload.compareEvidenceItems ?? payload.evidenceItems;
+  const baselineListings = baseline.filter((i) => i.sourceType === "listing");
+  const compareListings = compare.filter((i) => i.sourceType === "listing");
+  const nowFresh = freshnessNow();
+  const findings: Finding[] = [];
+  const areaSet = new Set(payload.plan.areasToAnalyze);
+
+  if (areaSet.has("market_structure") || areaSet.has("competitor_set")) {
+    findings.push({
+      findingId: newId(IdPrefix.finding),
+      statement: `Comparative set sizes: baseline ${baselineListings.length} listing(s) vs compare ${compareListings.length} listing(s).`,
+      analysisArea: areaSet.has("market_structure") ? "market_structure" : "competitor_set",
+      classification: "observed_fact",
+      scope: {
+        subjectIds: [
+          ...new Set([
+            ...baselineListings.map((l) => l.subjectId),
+            ...compareListings.map((l) => l.subjectId)
+          ])
+        ],
+        platform: "amazon",
+        marketplace: "US"
+      },
+      evidenceRefs: [
+        ...baselineListings.slice(0, 3).map((l) => l.evidenceId),
+        ...compareListings.slice(0, 3).map((l) => l.evidenceId)
+      ],
+      memoryRefs: [],
+      confidence: 0.9,
+      freshness: nowFresh,
+      contradictions: [],
+      downstreamImplications: ["Use size delta only within the same capability pack."],
+      validationStatus: "unreviewed",
+      tags: ["comparative_baseline", "comparative_compare"]
+    });
+  }
+
+  if (areaSet.has("pricing")) {
+    const avg = (items: typeof baselineListings): number | null => {
+      const prices = items
+        .map((i) => i.fields.price)
+        .filter((p): p is number => typeof p === "number");
+      if (prices.length === 0) return null;
+      return prices.reduce((a, b) => a + b, 0) / prices.length;
+    };
+    const baseAvg = avg(baselineListings);
+    const cmpAvg = avg(compareListings);
+    if (baseAvg != null && cmpAvg != null) {
+      const delta = Math.round((cmpAvg - baseAvg) * 100) / 100;
+      findings.push({
+        findingId: newId(IdPrefix.finding),
+        statement: `Compare-side mean price is $${cmpAvg.toFixed(2)} vs baseline $${baseAvg.toFixed(2)} (delta $${delta.toFixed(2)}).`,
+        analysisArea: "pricing",
+        classification: "inference",
+        scope: {
+          subjectIds: [
+            ...new Set([
+              ...baselineListings.map((l) => l.subjectId),
+              ...compareListings.map((l) => l.subjectId)
+            ])
+          ]
+        },
+        evidenceRefs: [
+          ...baselineListings.filter((l) => typeof l.fields.price === "number").map((l) => l.evidenceId),
+          ...compareListings.filter((l) => typeof l.fields.price === "number").map((l) => l.evidenceId)
+        ],
+        memoryRefs: [],
+        confidence: 0.75,
+        freshness: nowFresh,
+        contradictions: [],
+        downstreamImplications: ["Segment by binding/format before pricing decisions."],
+        validationStatus: "unreviewed",
+        tags: ["comparative_pricing"]
+      });
+    } else {
+      findings.push({
+        findingId: newId(IdPrefix.finding),
+        statement:
+          "Comparative pricing could not be computed because one side lacks numeric prices.",
+        analysisArea: "pricing",
+        classification: "unknown",
+        scope: { subjectIds: [] },
+        evidenceRefs: [],
+        memoryRefs: [],
+        confidence: 0.4,
+        freshness: nowFresh,
+        contradictions: [],
+        downstreamImplications: [],
+        validationStatus: "unreviewed",
+        tags: ["comparative_pricing"]
+      });
+    }
+  }
+
+  return {
+    schemaVersion: payload.outputSchemaVersion,
+    summary: `Comparative analysis across baseline (${baselineListings.length}) and compare (${compareListings.length}) listing sets.`,
+    readyAreasAnalyzed: payload.plan.areasToAnalyze,
+    blockedAreasSkipped: payload.plan.areasToSkip,
+    findings,
+    assumptions: [],
+    unknowns: payload.plan.areasToSkip.map(
+      (a) => `Area '${a}' skipped in comparative run due to readiness.`
+    ),
+    contradictions: [],
+    nextActions: ["Review comparative deltas before strategy handoff."],
+    limitations: ["Comparison is valid only within matching capability coordinates."]
+  };
+}
+
 /** Malicious/bad fixtures for quality-gate tests. */
 export function unsupportedCustomerClaimOutput(
   areas: AnalysisArea[] = ["customer_evidence"],

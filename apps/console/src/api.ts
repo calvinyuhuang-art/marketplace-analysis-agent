@@ -257,6 +257,8 @@ export const api = {
   base: API_BASE,
   health: () => getJson<HealthResponse>("/health"),
   ready: () => getJson<ReadinessResponse>("/ready"),
+  learningPlaneStatus: () =>
+    getJson<LearningPlaneStatus>("/v1/integrations/learning-plane/status"),
   capabilities: () => getJson<{ capabilities: CapabilitySummary[] }>("/v1/capabilities"),
   modelProfiles: () => getJson<{ profiles: ModelProfileSummary[] }>("/v1/model-profiles"),
   createAnalysis: (body: CreateAnalysisBody, idempotencyKey?: string) =>
@@ -266,6 +268,31 @@ export const api = {
       idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}
     ),
   getRun: (runId: string) => getJson<AnalysisRunResponse>(`/v1/analysis-runs/${runId}`),
+  getRunExperience: (runId: string) =>
+    getJson<{
+      experienceId: string;
+      runId: string;
+      status: string;
+      attempt: number;
+      operation: string;
+      tokenInput: number;
+      tokenOutput: number;
+      costUsd: number;
+      summary?: string;
+      completedAt?: string | null;
+    }>(`/v1/analysis-runs/${runId}/experience`),
+  listExperienceEvaluations: (experienceId: string) =>
+    getJson<{
+      experienceId: string;
+      evaluations: Array<{
+        evaluationId: string;
+        evaluatorType: string;
+        decision: string;
+        sourceSystem: string;
+        sourceRecordId: string;
+        createdAt: string;
+      }>;
+    }>(`/v1/experiences/${experienceId}/evaluations`),
   listRuns: () => getJson<{ runs: AnalysisRunResponse[] }>("/v1/runs"),
   listEvents: (runId: string) => getJson<{ events: RunEvent[] }>(`/v1/runs/${runId}/events`),
   getReadiness: (runId: string) => getJson<ReadinessReport>(`/v1/analysis-runs/${runId}/readiness`),
@@ -402,6 +429,22 @@ export const api = {
       reviewerId: "operator",
       ...body
     }),
+  listOutcomes: (projectId: string) =>
+    getJson<{ outcomes: OutcomeEvent[] }>(
+      `/v1/projects/${encodeURIComponent(projectId)}/outcomes`
+    ),
+  getOutcome: (outcomeId: string) =>
+    getJson<OutcomeEvent & { reassessments: OutcomeReassessment[] }>(
+      `/v1/outcomes/${encodeURIComponent(outcomeId)}`
+    ),
+  reassessOutcome: (
+    outcomeId: string,
+    body?: { client?: string; actorId?: string; idempotencyKey?: string }
+  ) =>
+    postJson<{ runId: string; requestId: string; statusUrl: string }>(
+      `/v1/outcomes/${encodeURIComponent(outcomeId)}/reassess`,
+      { client: "console", ...body }
+    ),
   getMemoryProposals: (projectId?: string, status?: string) => {
     const q = new URLSearchParams();
     if (projectId) q.set("projectId", projectId);
@@ -496,6 +539,27 @@ export interface ProceduralRule {
   regressionTestIds: string[];
 }
 
+export interface OutcomeEvent {
+  outcomeId: string;
+  projectId: string;
+  eventType: string;
+  metrics: Record<string, unknown>;
+  source: string;
+  linkedRunId?: string;
+  linkedExperienceId?: string;
+  occurredAt: string;
+  reassessments?: OutcomeReassessment[];
+}
+
+export interface OutcomeReassessment {
+  reassessmentId: string;
+  outcomeId: string;
+  runId?: string;
+  judgments: Array<{ findingId?: string; judgment: string; rationale: string }>;
+  reportArtifactId: string;
+  createdAt: string;
+}
+
 export interface MemoryProposal {
   proposalId: string;
   title: string;
@@ -551,4 +615,54 @@ export interface WikiProposal {
   status: string;
   changeReason: string;
   proposedContentMarkdown: string;
+}
+
+export interface LearningPlaneStatus {
+  implementationMilestone: string;
+  enabled: boolean;
+  publishEnabled: boolean;
+  receiveEnabled: boolean;
+  publishMode: string;
+  receiveMode: string;
+  adapterState: string;
+  agentId: string;
+  declaredCapabilities: string[];
+  registrationStatus: string;
+  credentialId: string | null;
+  callbackKeyId: string | null;
+  callbackPath: string;
+  learningPlaneBaseUrl: string;
+  learningPlaneApiCompatibility: string | null;
+  requiredLearningPlaneApiCompatibility: string;
+  maaServiceVersion: string;
+  maaApiCompatibility: string;
+  maaDatabaseSchemaVersion: string;
+  lastHealthReportAt: string | null;
+  lastSuccessfulConnectionAt: string | null;
+  lastSuccessfulPublishAt?: string | null;
+  lastSuccessfulReceiveAt?: string | null;
+  lastSuccessfulAcknowledgementAt?: string | null;
+  lastErrorCode: string | null;
+  boundedDiagnostic: string | null;
+  outboxCounts: Record<string, number>;
+  inboxCounts: Record<string, number>;
+  acknowledgementCounts?: Record<string, number>;
+  waitingForCausationCount?: number;
+  awaitingLocalReconciliationCount?: number;
+  semanticConflictCount?: number;
+  oldestPendingAgeSeconds?: number | null;
+  secretsPresent: boolean;
+  packageIdentity?: {
+    clientVersion: string;
+    contractsVersion: string;
+    apiCompat: string;
+    envelopeVersion?: string;
+    releasedWorkflowFeedbackPayloadVersions?: Record<string, string>;
+    packageChecksum: {
+      client: string | null;
+      contracts: string | null;
+    };
+    buildCommitOrSourceRevision?: string | null;
+  };
+  notes: string[];
 }

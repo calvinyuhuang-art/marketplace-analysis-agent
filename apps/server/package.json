@@ -12,6 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@learning-plane/client": "file:../../vendor/learning-plane/artifacts/learning-plane-client-0.8.0.tgz",
+    "@learning-plane/contracts": "file:../../vendor/learning-plane/artifacts/learning-plane-contracts-0.8.0.tgz",
     "@maa/agent-core": "workspace:*",
     "@maa/analysis": "workspace:*",
     "@maa/artifacts": "workspace:*",
@@ -33,6 +35,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@maa/client": "workspace:*",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/supertest": "^6.0.2",

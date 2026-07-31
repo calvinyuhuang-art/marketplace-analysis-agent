@@ -49,5 +49,16 @@ export const IdPrefix = {
   wikiVersion: "wver",
   wikiProposal: "wprop",
   wikiLint: "wlint",
-  wikiLink: "wlink"
+  wikiLink: "wlink",
+  experience: "exp",
+  evaluation: "eval",
+  evidencePlan: "eplan",
+  evidencePlanReview: "eprev",
+  workflowFeedback: "wfb",
+  gapFingerprint: "gfp",
+  proceduralRuleDef: "prdef",
+  proceduralRuleVersion: "prver",
+  proceduralActivation: "pract",
+  outcome: "outc",
+  outcomeReassessment: "oreas"
 } as const;

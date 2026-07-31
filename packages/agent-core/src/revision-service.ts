@@ -48,6 +48,34 @@ export interface RevisionServiceDeps {
   idempotency: IdempotencyRepository;
   auditLog: AuditLog;
   agentLog: Logger;
+  /** N1 one-way dual-write into agent_evaluations (never creates learning_events). */
+  experienceDualWrite?: {
+    recordFromLegacy: (input: {
+      runId: string;
+      evaluatorType: "human" | "deterministic" | "model" | "research_orchestrator" | "outcome";
+      decision: string;
+      sourceSystem:
+        | "maa.learning_events"
+        | "maa.finding_reviews"
+        | "maa.run_reviews"
+        | "maa.outcome_reviews"
+        | "maa.deterministic"
+        | "maa.model"
+        | "research_team"
+        | "maa.outcome_reassess";
+      sourceRecordId: string;
+      scores?: Record<string, unknown>;
+    }) => void;
+  };
+  /** N3: attach / complete workflow feedback around revision. */
+  workflowFeedback?: {
+    attachRevision: (input: { workflowFeedbackId: string; revisionRunId: string }) => void;
+    completeRevision: (input: {
+      revisionRunId: string;
+      priorRunId: string;
+      costUsd?: number;
+    }) => void;
+  };
   assertEvidencePackagesExist: (packageIds: string[]) => void;
   defaultTimeoutSeconds: number;
   defaultModelProfileId: string;
@@ -214,6 +242,10 @@ export class RevisionService {
         idempotencyKey: idempotencyKey ?? null,
         requestHash,
         status: "accepted",
+        evidencePlanId: null,
+        evidencePlanVersion: null,
+        outcomeId: null,
+        baselineEvidencePackageIdsJson: "[]",
         createdAt: now,
         updatedAt: now
       });
@@ -290,6 +322,15 @@ export class RevisionService {
         createdAt: now
       });
 
+      this.deps.experienceDualWrite?.recordFromLegacy({
+        runId: priorRunId,
+        evaluatorType: "human",
+        decision: "revision_requested",
+        sourceSystem: "maa.learning_events",
+        sourceRecordId: learningEventId,
+        scores: { reasonCode: input.reasonCode, revisionRunId: runId }
+      });
+
       if (idempotencyKey) {
         this.deps.idempotency.insert({
           idempotencyKey,
@@ -303,6 +344,13 @@ export class RevisionService {
     });
 
     tx();
+
+    if (input.workflowFeedbackId) {
+      this.deps.workflowFeedback?.attachRevision({
+        workflowFeedbackId: input.workflowFeedbackId,
+        revisionRunId: runId
+      });
+    }
 
     this.deps.auditLog.append({
       actorType: "reviewer",
@@ -394,6 +442,23 @@ export class RevisionService {
       createdAt: now
     });
 
+    this.deps.experienceDualWrite?.recordFromLegacy({
+      runId,
+      evaluatorType: "human",
+      decision: input.action,
+      sourceSystem: "maa.run_reviews",
+      sourceRecordId: reviewId,
+      scores: { reasonCode: input.reasonCode ?? null, learningEventId }
+    });
+    this.deps.experienceDualWrite?.recordFromLegacy({
+      runId,
+      evaluatorType: "human",
+      decision: eventType,
+      sourceSystem: "maa.learning_events",
+      sourceRecordId: learningEventId,
+      scores: { action: input.action, reviewId }
+    });
+
     this.deps.auditLog.append({
       actorType: "reviewer",
       actorId: input.reviewerId,
@@ -480,8 +545,9 @@ export class RevisionService {
     });
 
     const req = this.deps.requests.getById(run.requestId);
+    const revisionLearningEventId = newId(IdPrefix.learning);
     this.deps.learningEvents.insert({
-      learningEventId: newId(IdPrefix.learning),
+      learningEventId: revisionLearningEventId,
       projectId: req?.projectId ?? "unknown",
       eventType: "revision_completed",
       reasonCode: null,
@@ -497,6 +563,28 @@ export class RevisionService {
       promotionStatus: "recorded",
       createdAt: now
     });
+
+    this.deps.experienceDualWrite?.recordFromLegacy({
+      runId: revisionRunId,
+      evaluatorType: "human",
+      decision: "revision_completed",
+      sourceSystem: "maa.learning_events",
+      sourceRecordId: revisionLearningEventId,
+      scores: {
+        priorRunId: run.priorRunId,
+        entryCount: diff.entries.length,
+        artifactId: artifact.artifactId
+      }
+    });
+
+    // N3: close late-gap feedback if this revision is linked.
+    if (this.deps.workflowFeedback && run.priorRunId) {
+      this.deps.workflowFeedback.completeRevision({
+        revisionRunId,
+        priorRunId: run.priorRunId,
+        costUsd: run.costUsd ?? 0
+      });
+    }
 
     this.deps.events.insert({
       eventId: newId(IdPrefix.event),
@@ -544,6 +632,14 @@ export class RevisionService {
       payloadJson: JSON.stringify({ action: input.action }),
       promotionStatus: "recorded",
       createdAt: new Date().toISOString()
+    });
+    this.deps.experienceDualWrite?.recordFromLegacy({
+      runId: input.runId,
+      evaluatorType: "human",
+      decision: eventType,
+      sourceSystem: "maa.learning_events",
+      sourceRecordId: learningEventId,
+      scores: { action: input.action, findingId: input.findingId }
     });
     return learningEventId;
   }

@@ -189,6 +189,43 @@ export class AnalysisService {
     }
   }
 
+  /**
+   * Comparative / multi-package guard: reject before any model call when a
+   * package's capability coordinates do not match the request capability.
+   */
+  assertPackagesMatchCapability(
+    packageIds: string[],
+    capability: CreateAnalysisRequest["capability"]
+  ): void {
+    for (const packageId of packageIds) {
+      const pkg = this.deps.evidencePackages.getById(packageId);
+      if (!pkg) {
+        throw new AppError({
+          code: "EVIDENCE_PACKAGE_NOT_FOUND",
+          message: `Evidence package '${packageId}' was not found.`
+        });
+      }
+      if (
+        pkg.platform !== capability.platform ||
+        pkg.marketplace !== capability.marketplace ||
+        pkg.category !== capability.category ||
+        pkg.productType !== capability.productType
+      ) {
+        throw new AppError({
+          code: "UNSUPPORTED_CAPABILITY",
+          message:
+            "Comparative analysis packages must match the request capability coordinates.",
+          details: [
+            {
+              path: "evidencePackageIds",
+              message: `Package '${packageId}' is ${pkg.platform}/${pkg.marketplace}/${pkg.category}/${pkg.productType}; request is ${capability.platform}/${capability.marketplace}/${capability.category}/${capability.productType}`
+            }
+          ]
+        });
+      }
+    }
+  }
+
   createProject(input: CreateProject): ProjectResponse {
     const capability = this.resolveCapability(input.capability);
     const now = new Date().toISOString();
@@ -274,7 +311,35 @@ export class AnalysisService {
     const capability = this.resolveCapability(input.capability);
     this.assertOperationAllowed(capability, input.operation);
     this.assertAnalysisAreasAllowed(capability, input.requestedAnalysis);
-    this.deps.assertEvidencePackagesExist(input.evidencePackageIds);
+    if (
+      input.operation !== "review_evidence_plan" &&
+      input.operation !== "reassess_with_outcome"
+    ) {
+      this.deps.assertEvidencePackagesExist(input.evidencePackageIds);
+      if (input.operation === "comparative_analysis") {
+        if ((input.baselineEvidencePackageIds?.length ?? 0) < 1) {
+          throw new AppError({
+            code: "VALIDATION_ERROR",
+            message: "baselineEvidencePackageIds is required for comparative_analysis."
+          });
+        }
+        this.deps.assertEvidencePackagesExist(input.baselineEvidencePackageIds!);
+        this.assertPackagesMatchCapability(
+          [...input.evidencePackageIds, ...input.baselineEvidencePackageIds!],
+          input.capability
+        );
+      }
+    } else if (input.operation === "review_evidence_plan" && !input.evidencePlanId) {
+      throw new AppError({
+        code: "VALIDATION_ERROR",
+        message: "evidencePlanId is required for review_evidence_plan."
+      });
+    } else if (input.operation === "reassess_with_outcome" && !input.outcomeId) {
+      throw new AppError({
+        code: "VALIDATION_ERROR",
+        message: "outcomeId is required for reassess_with_outcome."
+      });
+    }
 
     const idempotencyKey = opts.idempotencyKey ?? input.idempotencyKey;
     const requestHash = hashPayload({
@@ -330,6 +395,12 @@ export class AnalysisService {
         idempotencyKey: idempotencyKey ?? null,
         requestHash,
         status: "accepted",
+        evidencePlanId: input.evidencePlanId ?? null,
+        evidencePlanVersion: input.evidencePlanVersion ?? null,
+        outcomeId: input.outcomeId ?? null,
+        baselineEvidencePackageIdsJson: JSON.stringify(
+          input.baselineEvidencePackageIds ?? []
+        ),
         createdAt: now,
         updatedAt: now
       });
@@ -377,7 +448,8 @@ export class AnalysisService {
         detailJson: JSON.stringify({
           operation: input.operation,
           capabilityId: capability.id,
-          evidencePackageIds: input.evidencePackageIds
+          evidencePackageIds: input.evidencePackageIds,
+          baselineEvidencePackageIds: input.baselineEvidencePackageIds ?? []
         }),
         createdAt: now
       });
@@ -393,7 +465,11 @@ export class AnalysisService {
         });
       }
 
-      for (const packageId of input.evidencePackageIds) {
+      const linked = new Set([
+        ...input.evidencePackageIds,
+        ...(input.baselineEvidencePackageIds ?? [])
+      ]);
+      for (const packageId of linked) {
         this.deps.evidencePackages.linkToRequest(requestId, packageId, now);
       }
     });

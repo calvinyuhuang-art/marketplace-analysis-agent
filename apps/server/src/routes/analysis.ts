@@ -2,12 +2,13 @@ import { Router } from "express";
 import {
   AppError,
   CreateAnalysisRequestSchema,
-  OperationType
+  OperationType,
+  REMOVED_PUBLIC_OPERATIONS
 } from "@maa/contracts";
 import type { Container } from "../composition/container";
 import { getIds } from "../middleware/context";
 
-function rejectFreeChat(body: unknown): void {
+function rejectUnsupportedOperation(body: unknown): void {
   if (!body || typeof body !== "object") return;
   const record = body as Record<string, unknown>;
   const hasChatFields =
@@ -15,6 +16,7 @@ function rejectFreeChat(body: unknown): void {
     typeof record.prompt === "string" ||
     typeof record.chat === "string";
   const operation = record.operation;
+
   if (hasChatFields && (operation === undefined || typeof operation !== "string")) {
     throw new AppError({
       code: "UNSUPPORTED_CAPABILITY",
@@ -22,16 +24,26 @@ function rejectFreeChat(body: unknown): void {
         "The requested operation is outside the supported marketplace-analysis capabilities."
     });
   }
-  if (typeof operation === "string") {
-    const parsed = OperationType.safeParse(operation);
-    if (!parsed.success) {
-      throw new AppError({
-        code: "UNSUPPORTED_CAPABILITY",
-        message:
-          "The requested operation is outside the supported marketplace-analysis capabilities.",
-        details: [{ path: "operation", message: `Unsupported operation '${operation}'` }]
-      });
-    }
+
+  if (typeof operation !== "string") return;
+
+  if ((REMOVED_PUBLIC_OPERATIONS as readonly string[]).includes(operation)) {
+    throw new AppError({
+      code: "UNSUPPORTED_OPERATION",
+      message:
+        `Operation '${operation}' was removed from the public allowlist (N7). Use POST /v1/memory-proposals instead.`,
+      details: [{ path: "operation", message: operation }]
+    });
+  }
+
+  const parsed = OperationType.safeParse(operation);
+  if (!parsed.success) {
+    throw new AppError({
+      code: "UNSUPPORTED_CAPABILITY",
+      message:
+        "The requested operation is outside the supported marketplace-analysis capabilities.",
+      details: [{ path: "operation", message: `Unsupported operation '${operation}'` }]
+    });
   }
 }
 
@@ -40,9 +52,9 @@ export function analysisRoutes(container: Container): Router {
 
   router.post("/v1/analysis-requests", (req, res, next) => {
     try {
-      // Guardrail: reject free-chat / unknown operations before Zod details
+      // Guardrail: reject free-chat / unknown / removed operations before Zod
       // and before any model provider is touched.
-      rejectFreeChat(req.body);
+      rejectUnsupportedOperation(req.body);
 
       const parsed = CreateAnalysisRequestSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -77,7 +89,8 @@ export function analysisRoutes(container: Container): Router {
         operation: result.operation,
         correlationId: result.correlationId,
         statusUrl: result.statusUrl,
-        createdAt: result.createdAt
+        createdAt: result.createdAt,
+        reused: result.reused
       });
     } catch (err) {
       next(err);
@@ -97,6 +110,40 @@ export function analysisRoutes(container: Container): Router {
     try {
       const body = container.analysisService.getRun(req.params.runId!);
       res.status(200).json(body);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get("/v1/analysis-runs/:runId/experience", (req, res, next) => {
+    try {
+      const run = container.analysisService.getRun(req.params.runId!);
+      const experience = container.experienceService.getByRunId(run.runId);
+      if (!experience) {
+        throw new AppError({
+          code: "NOT_FOUND",
+          message: `No experience captured for run '${run.runId}' yet.`
+        });
+      }
+      res.status(200).json(experience);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get("/v1/experiences/:experienceId/evaluations", (req, res, next) => {
+    try {
+      const experience = container.experienceService.getById(req.params.experienceId!);
+      if (!experience) {
+        throw new AppError({
+          code: "NOT_FOUND",
+          message: `Experience '${req.params.experienceId}' was not found.`
+        });
+      }
+      res.status(200).json({
+        experienceId: experience.experienceId,
+        evaluations: container.experienceService.listEvaluations(experience.experienceId)
+      });
     } catch (err) {
       next(err);
     }

@@ -11,7 +11,9 @@ import { MemoryGovernor } from "./pages/MemoryGovernor";
 import { NewAnalysis } from "./pages/NewAnalysis";
 import { ProjectMemory } from "./pages/ProjectMemory";
 import { RunInspector } from "./pages/RunInspector";
+import { OutcomesPage } from "./pages/Outcomes";
 import { TestConsole } from "./pages/TestConsole";
+import { LearningPlaneStatusPage } from "./pages/LearningPlaneStatus";
 import "./styles.css";
 
 const router = createBrowserRouter([
@@ -26,9 +28,11 @@ const router = createBrowserRouter([
       { path: "runs/:runId/findings", element: <FindingReview /> },
       { path: "projects/:projectId/memory", element: <ProjectMemory /> },
       { path: "error-book", element: <ErrorBookPage /> },
+      { path: "outcomes", element: <OutcomesPage /> },
       { path: "memory-governor", element: <MemoryGovernor /> },
       { path: "wiki", element: <WikiBrowser /> },
       { path: "wiki/pages/:pageId", element: <WikiBrowser /> },
+      { path: "learning-plane", element: <LearningPlaneStatusPage /> },
       { path: "test-console", element: <TestConsole /> }
     ]
   }

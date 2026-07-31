@@ -14,6 +14,8 @@ log/*
 .env
 .env.*
 !.env.example
+data/secrets/
+**/learning-plane-adapter.json
 
 # Test output
 coverage/

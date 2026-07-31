@@ -21,7 +21,8 @@ export const AMAZON_KDP_CAPABILITY: CapabilitySummary = {
     "revise_analysis",
     "comparative_analysis",
     "evaluate_evidence_readiness",
-    "propose_memory_update"
+    "review_evidence_plan",
+    "reassess_with_outcome"
   ],
   supportedAnalysisAreas: [
     "market_structure",

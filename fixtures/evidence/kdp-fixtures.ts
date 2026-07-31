@@ -22,6 +22,7 @@ function listing(
     textContent: String(fields.positioningText ?? ""),
     fields: {
       format: "paperback",
+      binding: "paperback",
       currency: "USD",
       pageCount: 80,
       ...fields
@@ -200,6 +201,32 @@ export function promptInjectionFixture(packageId = "evpkg_injection"): EvidenceP
       review("evid_inj6", "B001", "Would buy again.")
     ]
   };
+}
+
+/**
+ * N3 UAT: priced listings with format but no binding — readiness can still allow
+ * pricing; analysis must detect late format-normalization gap.
+ */
+export function pricingMissingBindingFixture(
+  packageId = "evpkg_pricing_no_binding"
+): EvidencePackageInput {
+  const base = completeKdpFixture(packageId);
+  return {
+    ...base,
+    items: base.items!.map((item) => {
+      if (item.sourceType !== "listing") return item;
+      const fields = { ...item.fields };
+      delete fields.binding;
+      return { ...item, fields };
+    })
+  };
+}
+
+/** Supplemental package that restores binding for late-gap resolution. */
+export function pricingWithBindingFixture(
+  packageId = "evpkg_pricing_with_binding"
+): EvidencePackageInput {
+  return completeKdpFixture(packageId);
 }
 
 /** Minimal valid package for M1-style runtime tests. */
