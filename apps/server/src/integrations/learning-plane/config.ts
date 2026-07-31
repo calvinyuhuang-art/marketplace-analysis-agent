@@ -5,6 +5,7 @@ import type { AgentCapability } from "@learning-plane/contracts";
 
 export const LP8_I3B_MILESTONE = "LP8-I3b" as const;
 export const LP8_I4C_MILESTONE = "LP8-I4c" as const;
+export const LP8_I5C_MILESTONE = "LP8-I5c" as const;
 /** @deprecated use LP8_I3B_MILESTONE */
 export const LP8_I1_MILESTONE = LP8_I3B_MILESTONE;
 export const MAA_LP_ADAPTER_ID = "maa-learning-plane-adapter" as const;
@@ -34,6 +35,21 @@ export type LearningPlaneAdapterConfig = {
   replayExecuteEnabled: boolean;
   replayReportEnabled: boolean;
   grandfatherRegisterEnabled: boolean;
+  /** LP8-I5c published-knowledge flags (all default off). */
+  publicationBridgeEnabled: boolean;
+  publicationSubmitEnabled: boolean;
+  publicationReconcileEnabled: boolean;
+  discoveryEnabled: boolean;
+  packageFetchEnabled: boolean;
+  localReferenceEnabled: boolean;
+  localReferenceReviewEnabled: boolean;
+  externalRetrievalEnabled: boolean;
+  referenceReceiptEnabled: boolean;
+  useReceiptEnabled: boolean;
+  influenceReceiptEnabled: boolean;
+  challengeEnabled: boolean;
+  pkLifecycleReconcileEnabled: boolean;
+  offlineGraceHours: number;
 };
 
 export function resolveLearningPlaneAdapterConfig(
@@ -61,7 +77,21 @@ export function resolveLearningPlaneAdapterConfig(
     replayBridgeEnabled: raw.MAA_LEARNING_PLANE_REPLAY_BRIDGE_ENABLED,
     replayExecuteEnabled: raw.MAA_LEARNING_PLANE_REPLAY_EXECUTE_ENABLED,
     replayReportEnabled: raw.MAA_LEARNING_PLANE_REPLAY_REPORT_ENABLED,
-    grandfatherRegisterEnabled: raw.MAA_LEARNING_PLANE_GRANDFATHER_REGISTER_ENABLED
+    grandfatherRegisterEnabled: raw.MAA_LEARNING_PLANE_GRANDFATHER_REGISTER_ENABLED,
+    publicationBridgeEnabled: raw.MAA_LEARNING_PLANE_PUBLICATION_BRIDGE_ENABLED,
+    publicationSubmitEnabled: raw.MAA_LEARNING_PLANE_PUBLICATION_SUBMIT_ENABLED,
+    publicationReconcileEnabled: raw.MAA_LEARNING_PLANE_PUBLICATION_RECONCILE_ENABLED,
+    discoveryEnabled: raw.MAA_LEARNING_PLANE_DISCOVERY_ENABLED,
+    packageFetchEnabled: raw.MAA_LEARNING_PLANE_PACKAGE_FETCH_ENABLED,
+    localReferenceEnabled: raw.MAA_LEARNING_PLANE_LOCAL_REFERENCE_ENABLED,
+    localReferenceReviewEnabled: raw.MAA_LEARNING_PLANE_LOCAL_REFERENCE_REVIEW_ENABLED,
+    externalRetrievalEnabled: raw.MAA_LEARNING_PLANE_EXTERNAL_RETRIEVAL_ENABLED,
+    referenceReceiptEnabled: raw.MAA_LEARNING_PLANE_REFERENCE_RECEIPT_ENABLED,
+    useReceiptEnabled: raw.MAA_LEARNING_PLANE_USE_RECEIPT_ENABLED,
+    influenceReceiptEnabled: raw.MAA_LEARNING_PLANE_INFLUENCE_RECEIPT_ENABLED,
+    challengeEnabled: raw.MAA_LEARNING_PLANE_CHALLENGE_ENABLED,
+    pkLifecycleReconcileEnabled: raw.MAA_LEARNING_PLANE_PK_LIFECYCLE_RECONCILE_ENABLED,
+    offlineGraceHours: raw.MAA_LEARNING_PLANE_OFFLINE_GRACE_HOURS
   };
 }
 
@@ -82,7 +112,14 @@ type DeclaredCap =
   | "replay.execute"
   | "replay.status_submit"
   | "replay.report_submit"
-  | "legacy_local.reference_register";
+  | "legacy_local.reference_register"
+  | "knowledge.publish_proposal"
+  | "knowledge.discover"
+  | "knowledge.challenge_submit"
+  | "knowledge.reference_receipt_submit"
+  | "knowledge.use_receipt_submit"
+  | "knowledge.influence_receipt_submit"
+  | "knowledge.eligibility_query";
 
 /** Capabilities declared from accepted feature flags (implemented only). */
 export function declaredCapabilitiesForFlags(
@@ -100,6 +137,13 @@ export function declaredCapabilitiesForFlags(
     | "replayExecuteEnabled"
     | "replayReportEnabled"
     | "grandfatherRegisterEnabled"
+    | "publicationBridgeEnabled"
+    | "publicationSubmitEnabled"
+    | "discoveryEnabled"
+    | "challengeEnabled"
+    | "referenceReceiptEnabled"
+    | "useReceiptEnabled"
+    | "influenceReceiptEnabled"
   >
 ): DeclaredCap[] {
   if (!config.enabled) return [];
@@ -128,6 +172,16 @@ export function declaredCapabilitiesForFlags(
   }
   if (config.governanceBridgeEnabled && config.grandfatherRegisterEnabled) {
     caps.push("legacy_local.reference_register");
+  }
+  if (config.publicationBridgeEnabled) {
+    if (config.publicationSubmitEnabled) caps.push("knowledge.publish_proposal");
+    if (config.discoveryEnabled) {
+      caps.push("knowledge.discover", "knowledge.eligibility_query");
+    }
+    if (config.challengeEnabled) caps.push("knowledge.challenge_submit");
+    if (config.referenceReceiptEnabled) caps.push("knowledge.reference_receipt_submit");
+    if (config.useReceiptEnabled) caps.push("knowledge.use_receipt_submit");
+    if (config.influenceReceiptEnabled) caps.push("knowledge.influence_receipt_submit");
   }
   return caps;
 }

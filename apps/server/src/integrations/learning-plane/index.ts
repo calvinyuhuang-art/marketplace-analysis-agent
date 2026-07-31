@@ -27,6 +27,10 @@ import { LearningPlaneReconciliationWorker } from "./reconciliationWorker.js";
 import { GovernanceReplayBridgeRepository } from "./governanceReplayBridgeRepository.js";
 import { GovernanceBridgeService } from "./governanceBridgeService.js";
 import { GovernanceBridgeOutboxWorker } from "./governanceBridgeOutboxWorker.js";
+import { PublishedKnowledgeBridgeRepository } from "./publishedKnowledgeBridgeRepository.js";
+import { PublishedKnowledgeBridgeService } from "./publishedKnowledgeBridgeService.js";
+import { PublishedKnowledgeOutboxWorker } from "./publishedKnowledgeOutboxWorker.js";
+import type { MemoryItemsRepository } from "@maa/database";
 
 export type LearningPlaneAdapter = {
   config: LearningPlaneAdapterConfig;
@@ -37,6 +41,7 @@ export type LearningPlaneAdapter = {
   capture: WorkflowFeedbackLearningPlaneCapture;
   reconciliation: LearningPlaneReconciliationWorker;
   governanceBridge: GovernanceBridgeService | null;
+  publishedKnowledgeBridge: PublishedKnowledgeBridgeService | null;
   getStatus: () => Promise<LearningPlaneStatusResponse>;
   bootstrap: (request: BootstrapRequest) => ReturnType<typeof bootstrapLearningPlaneAdapter>;
   reconcile: () => ReturnType<LearningPlaneRegistrationService["reconcile"]>;
@@ -57,6 +62,7 @@ export function createLearningPlaneAdapter(input: {
   versions?: ProceduralRuleVersionsRepository;
   definitions?: ProceduralRuleDefinitionsRepository;
   activations?: ProceduralRuleActivationsRepository;
+  memoryItems?: MemoryItemsRepository;
 }): LearningPlaneAdapter {
   const config = resolveLearningPlaneAdapterConfig(input.rawConfig, input.repoRoot);
   const repo = new LearningPlaneAdapterRepository(input.db);
@@ -138,6 +144,24 @@ export function createLearningPlaneAdapter(input: {
     });
   }
 
+  const pkRepo = new PublishedKnowledgeBridgeRepository(input.db);
+  const publishedKnowledgeBridge = new PublishedKnowledgeBridgeService({
+    config,
+    db: input.db,
+    repo: pkRepo,
+    adapterRepo: repo,
+    secrets,
+    memoryItems: input.memoryItems
+  });
+  const pkOutboxWorker = new PublishedKnowledgeOutboxWorker({
+    config,
+    pkRepo,
+    adapterRepo: repo,
+    secrets,
+    logger: input.logger,
+    enabled: () => config.enabled && config.publicationBridgeEnabled
+  });
+
   const syncFlagSettings = () => {
     if (!repo.tablesPresent() || !config.enabled) return;
     const existing = repo.getSettings();
@@ -169,6 +193,7 @@ export function createLearningPlaneAdapter(input: {
     capture,
     reconciliation,
     governanceBridge,
+    publishedKnowledgeBridge,
     async getStatus() {
       let reachable: boolean | null = null;
       if (config.enabled) {
@@ -182,7 +207,8 @@ export function createLearningPlaneAdapter(input: {
         serviceVersion: input.serviceVersion,
         databaseSchemaVersion: input.databaseSchemaVersion,
         learningPlaneReachable: reachable,
-        repoRoot: input.repoRoot
+        repoRoot: input.repoRoot,
+        publishedKnowledgeBridge
       });
     },
     bootstrap(request) {
@@ -249,6 +275,7 @@ export function createLearningPlaneAdapter(input: {
       ackWorker.start();
       reconciliation.start();
       govOutboxWorker?.start();
+      pkOutboxWorker.start();
       if (
         governanceBridge &&
         config.replayBridgeEnabled &&
@@ -276,7 +303,8 @@ export function createLearningPlaneAdapter(input: {
         outboxWorker.stop(),
         ackWorker.stop(),
         reconciliation.stop(),
-        govOutboxWorker?.stop() ?? Promise.resolve()
+        govOutboxWorker?.stop() ?? Promise.resolve(),
+        pkOutboxWorker.stop()
       ]);
     }
   };

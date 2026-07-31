@@ -51,7 +51,7 @@ export type BootstrapRequest = {
 };
 
 export type LearningPlaneStatusResponse = {
-  implementationMilestone: "LP8-I3b" | "LP8-I4c";
+  implementationMilestone: "LP8-I3b" | "LP8-I4c" | "LP8-I5c";
   enabled: boolean;
   publishEnabled: boolean;
   receiveEnabled: boolean;
@@ -107,6 +107,12 @@ export type LearningPlaneStatusResponse = {
     replayExecuteEnabled: boolean;
     replayReportEnabled: boolean;
     grandfatherRegisterEnabled: boolean;
+    publicationBridgeEnabled?: boolean;
+    publicationSubmitEnabled?: boolean;
+    discoveryEnabled?: boolean;
+    localReferenceEnabled?: boolean;
+    externalRetrievalEnabled?: boolean;
   };
+  publishedKnowledge?: Record<string, unknown>;
   notes: string[];
 };

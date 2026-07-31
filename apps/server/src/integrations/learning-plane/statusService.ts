@@ -5,6 +5,7 @@ import {
   MAA_LP_REQUIRED_API_COMPAT,
   LP8_I3B_MILESTONE,
   LP8_I4C_MILESTONE,
+  LP8_I5C_MILESTONE,
   publishModeStatus,
   receiveModeStatus,
   type LearningPlaneAdapterConfig
@@ -12,6 +13,7 @@ import {
 import type { AdapterRuntimeState, LearningPlaneStatusResponse } from "./contracts.js";
 import type { LearningPlaneSecretStore } from "./secretStore.js";
 import { loadLearningPlanePackageIdentity } from "./packageIdentity.js";
+import type { PublishedKnowledgeBridgeService } from "./publishedKnowledgeBridgeService.js";
 
 export function buildLearningPlaneStatus(input: {
   config: LearningPlaneAdapterConfig;
@@ -21,6 +23,7 @@ export function buildLearningPlaneStatus(input: {
   databaseSchemaVersion: string;
   learningPlaneReachable: boolean | null;
   repoRoot: string;
+  publishedKnowledgeBridge?: PublishedKnowledgeBridgeService | null;
 }): LearningPlaneStatusResponse {
   const { config, repo, secrets, serviceVersion, databaseSchemaVersion } = input;
   const settings = repo.tablesPresent() ? repo.getSettings() : null;
@@ -55,17 +58,24 @@ export function buildLearningPlaneStatus(input: {
   const notes: string[] = [
     "LP8-I3b production workflow-feedback adapter: created + evaluated publish; resolution_submitted receive.",
     "LP8-I4c governance/replay bridge available behind feature flags (default off).",
-    "Approval does not activate. Replay eligibility does not activate."
+    "LP8-I5c published-knowledge bridge available behind feature flags (default off).",
+    "Approval does not activate. Replay eligibility does not activate.",
+    "Discovery does not create a local reference. Reference is not adoption. Publication never activates rules."
   ];
   if (!config.publishEnabled) notes.push("Publish flag is off; no outbox capture.");
   if (!config.receiveEnabled) notes.push("Receive flag is off; callback rejects deliveries.");
   if (!config.governanceBridgeEnabled) notes.push("Governance bridge flag is off.");
   if (!config.replayBridgeEnabled) notes.push("Replay bridge flag is off.");
+  if (!config.publicationBridgeEnabled) notes.push("Published-knowledge bridge flag is off.");
+
+  const milestone = config.publicationBridgeEnabled
+    ? LP8_I5C_MILESTONE
+    : config.governanceBridgeEnabled
+      ? LP8_I4C_MILESTONE
+      : LP8_I3B_MILESTONE;
 
   return {
-    implementationMilestone: config.governanceBridgeEnabled
-      ? LP8_I4C_MILESTONE
-      : LP8_I3B_MILESTONE,
+    implementationMilestone: milestone,
     enabled: config.enabled,
     publishEnabled: config.publishEnabled,
     receiveEnabled: config.receiveEnabled,
@@ -111,8 +121,14 @@ export function buildLearningPlaneStatus(input: {
       replayBridgeEnabled: config.replayBridgeEnabled,
       replayExecuteEnabled: config.replayExecuteEnabled,
       replayReportEnabled: config.replayReportEnabled,
-      grandfatherRegisterEnabled: config.grandfatherRegisterEnabled
+      grandfatherRegisterEnabled: config.grandfatherRegisterEnabled,
+      publicationBridgeEnabled: config.publicationBridgeEnabled,
+      publicationSubmitEnabled: config.publicationSubmitEnabled,
+      discoveryEnabled: config.discoveryEnabled,
+      localReferenceEnabled: config.localReferenceEnabled,
+      externalRetrievalEnabled: config.externalRetrievalEnabled
     },
+    publishedKnowledge: input.publishedKnowledgeBridge?.getStatus(),
     notes
   };
 }

@@ -22,6 +22,7 @@ import { learningPlaneIntegrationRoutes } from "../integrations/learning-plane/r
 import { learningPlaneCallbackRoutes } from "../integrations/learning-plane/callbackRoute";
 import { governanceCallbackRoutes } from "../integrations/learning-plane/governanceCallbackRoute";
 import { replayCallbackRoutes } from "../integrations/learning-plane/replayCallbackRoute";
+import { publishedKnowledgeRoutes } from "../integrations/learning-plane/publishedKnowledgeRoutes";
 
 export function buildRoutes(container: Container): Router {
   const router = Router();
@@ -44,6 +45,11 @@ export function buildRoutes(container: Container): Router {
   router.use(outcomeRoutes(container));
   router.use(adminRoutes(container));
   router.use(learningPlaneIntegrationRoutes(container));
+  router.use(
+    publishedKnowledgeRoutes({
+      service: container.learningPlane?.publishedKnowledgeBridge ?? null
+    })
+  );
   if (container.learningPlane?.config.enabled) {
     router.use(
       learningPlaneCallbackRoutes({
