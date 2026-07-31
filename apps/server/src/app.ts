@@ -42,9 +42,9 @@ export function createApp(container: Container): Express {
     express.json({
       limit: container.config.raw.MAA_MAX_REQUEST_BYTES,
       verify: (req, _res, buf) => {
-        if (req.url?.includes("/learning-plane/deliveries")) {
-          (req as express.Request & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
-        }
+        // Always preserve raw bytes for HMAC verification (LP deliveries,
+        // governance decisions, replay jobs). Matching Research Team pattern.
+        (req as express.Request & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
       }
     })
   );

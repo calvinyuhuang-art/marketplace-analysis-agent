@@ -9,8 +9,7 @@ import {
   existsSync,
   mkdtempSync,
   mkdirSync,
-  writeFileSync,
-  readFileSync
+  writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -457,7 +456,8 @@ async function main(): Promise<void> {
     if (failed.length) process.exitCode = 1;
   } finally {
     try {
-      await maaServer?.close();
+      const server = maaServer as { close: () => Promise<void> } | null;
+      await server?.close();
     } catch {
       /* ignore */
     }
