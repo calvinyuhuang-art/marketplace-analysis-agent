@@ -665,4 +665,15 @@ export interface LearningPlaneStatus {
     buildCommitOrSourceRevision?: string | null;
   };
   notes: string[];
+  bridgeFlags?: {
+    governanceBridgeEnabled: boolean;
+    governancePublishEnabled: boolean;
+    governanceReceiveEnabled: boolean;
+    validationReceiptEnabled: boolean;
+    activationReceiptEnabled: boolean;
+    replayBridgeEnabled: boolean;
+    replayExecuteEnabled: boolean;
+    replayReportEnabled: boolean;
+    grandfatherRegisterEnabled: boolean;
+  };
 }

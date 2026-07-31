@@ -195,6 +195,18 @@ export function LearningPlaneStatusPage() {
             <dt>LP package checksum (client)</dt>
             <dd>{status.packageIdentity?.packageChecksum.client ?? "—"}</dd>
           </div>
+          <div>
+            <dt>Governance bridge flags</dt>
+            <dd data-testid="lp-bridge-flags">
+              {status.bridgeFlags
+                ? JSON.stringify(status.bridgeFlags)
+                : "unavailable (defaults off)"}
+            </dd>
+          </div>
+          <div>
+            <dt>Approval semantics</dt>
+            <dd>Approval does not activate. Replay eligibility does not activate.</dd>
+          </div>
         </dl>
       </section>
       <section className="card" data-testid="lp-notes">
