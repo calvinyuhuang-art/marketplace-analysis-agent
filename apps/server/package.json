@@ -12,8 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@learning-plane/client": "file:../../vendor/learning-plane/artifacts/learning-plane-client-0.8.0.tgz",
-    "@learning-plane/contracts": "file:../../vendor/learning-plane/artifacts/learning-plane-contracts-0.8.0.tgz",
+    "@learning-plane/client": "file:../../vendor/learning-plane/artifacts/learning-plane-client-0.8.1.tgz",
+    "@learning-plane/contracts": "file:../../vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz",
     "@maa/agent-core": "workspace:*",
     "@maa/analysis": "workspace:*",
     "@maa/artifacts": "workspace:*",

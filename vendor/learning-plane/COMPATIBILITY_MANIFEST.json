@@ -1,52 +1,28 @@
 {
-  "learningPlaneClientVersion": "0.8.0",
-  "learningPlaneContractsVersion": "0.8.0",
+  "learningPlaneClientVersion": "0.8.1",
+  "learningPlaneContractsVersion": "0.8.1",
   "learningPlaneApiCompat": "2026.07",
-  "learningPlaneServiceVersion": "0.8.0",
-  "schemaMigrationVersion": "0006",
-  "supportedEnvelopeVersions": [
-    "1.0"
-  ],
+  "supportedEnvelopeVersions": ["1.0"],
   "releasedWorkflowFeedbackPayloadVersions": {
     "workflow_feedback.created": "1.0",
     "workflow_feedback.resolution_submitted": "1.0",
     "workflow_feedback.resolution_evaluated": "1.0"
   },
-  "buildCommitOrSourceRevision": "unknown",
-  "builtAt": "2026-07-31T00:46:03.246Z",
-  "packageSha256": {
-    "contracts": "51e00046e8fd715f93997108863f0813c8bdc2ac5c8a2cd27d80009da3d62e86",
-    "client": "2fb12a37621d5b361ea32634b972e9a978d06675d9a309dbd0ec38a05f560a49"
-  },
+  "buildCommitOrSourceRevision": "8dd48034d303d9f447cd8c9c8f3205eac449fcd5",
   "artifacts": {
     "contracts": {
-      "packageName": "@learning-plane/contracts",
-      "version": "0.8.0",
-      "fileName": "learning-plane-contracts-0.8.0.tgz",
-      "packageSha256": "51e00046e8fd715f93997108863f0813c8bdc2ac5c8a2cd27d80009da3d62e86"
+      "version": "0.8.1",
+      "filename": "learning-plane-contracts-0.8.1.tgz",
+      "packageSha256": "8f93925ffafb2adc3b66bd1921070478422bdfacf0fb72957f86526b8de9880e"
     },
     "client": {
-      "packageName": "@learning-plane/client",
-      "version": "0.8.0",
-      "fileName": "learning-plane-client-0.8.0.tgz",
-      "packageSha256": "2fb12a37621d5b361ea32634b972e9a978d06675d9a309dbd0ec38a05f560a49"
+      "version": "0.8.1",
+      "filename": "learning-plane-client-0.8.1.tgz",
+      "packageSha256": "b3ada763ab58c7762ed5ac4bc6f49fd415e415158def1c60bb0e34e183d4ead2"
     }
   },
-  "install": {
-    "pnpm": [
-      "pnpm add ./vendor/learning-plane/artifacts/learning-plane-contracts-0.8.0.tgz",
-      "pnpm add ./vendor/learning-plane/artifacts/learning-plane-client-0.8.0.tgz"
-    ],
-    "npm": [
-      "npm install ./vendor/learning-plane/artifacts/learning-plane-contracts-0.8.0.tgz",
-      "npm install ./vendor/learning-plane/artifacts/learning-plane-client-0.8.0.tgz"
-    ]
-  },
   "notes": [
-    "Verify packageSha256 before install.",
-    "Do not copy package source trees by hand.",
-    "Artifacts contain only public runtime files, contracts, types, and metadata.",
-    "Install both tarballs; @learning-plane/client peer-depends on @learning-plane/contracts.",
-    "LP8-I3a releases workflow_feedback.created|resolution_submitted|resolution_evaluated@1.0."
+    "LP8-I4c consumes Learning Plane 0.8.1 productionBridge foundation.",
+    "Approval never activates. Replay eligibility never activates."
   ]
 }

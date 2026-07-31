@@ -63,9 +63,14 @@ export function loadLearningPlanePackageIdentity(repoRoot: string): LearningPlan
     /* manifest optional at runtime; identity still comes from installed packages */
   }
 
-  if (clientVersion !== "0.8.0" || contractsVersion !== "0.8.0") {
+  if (clientVersion !== "0.8.0" && clientVersion !== "0.8.1") {
     throw new Error(
-      `Malformed Learning Plane package identity: expected 0.8.0, got client=${clientVersion} contracts=${contractsVersion}`
+      `Malformed Learning Plane package identity: expected 0.8.0 or 0.8.1, got client=${clientVersion} contracts=${contractsVersion}`
+    );
+  }
+  if (contractsVersion !== "0.8.0" && contractsVersion !== "0.8.1") {
+    throw new Error(
+      `Malformed Learning Plane package identity: expected contracts 0.8.0 or 0.8.1, got ${contractsVersion}`
     );
   }
 

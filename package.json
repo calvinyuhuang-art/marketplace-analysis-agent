@@ -24,6 +24,12 @@
     "test:e2e": "playwright test",
     "clean": "pnpm -r exec rimraf dist"
   },
+  "pnpm": {
+    "overrides": {
+      "@learning-plane/contracts": "file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.1.tgz",
+      "@learning-plane/client": "file:vendor/learning-plane/artifacts/learning-plane-client-0.8.1.tgz"
+    }
+  },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@types/node": "^20.19.0",
