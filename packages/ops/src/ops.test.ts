@@ -61,7 +61,7 @@ describe("M10 ops: integrity, backup, retention", () => {
     }
   });
 
-  it("backup/restore preserves N1–N6 tables through schema 0016", () => {
+  it("backup/restore preserves N1–N6 tables through schema 0017", () => {
     const root = mkdtempSync(join(tmpdir(), "maa-ops-n7-"));
     try {
       const dbPath = join(root, "maa.sqlite");
@@ -75,17 +75,17 @@ describe("M10 ops: integrity, backup, retention", () => {
         databasePath: dbPath,
         backupDir,
         serviceVersion: "0.19.0",
-        databaseSchemaVersion: "0016",
+        databaseSchemaVersion: "0017",
         notes: "lp8-i1-coverage"
       });
       expect(backup.manifest.schemaVersion).toBe("maa-backup.v1");
-      expect(backup.manifest.databaseSchemaVersion).toBe("0016");
+      expect(backup.manifest.databaseSchemaVersion).toBe("0017");
 
       const restoredPath = join(root, "restored.sqlite");
       restoreBackup({
         backupPath: backup.backupPath,
         databasePath: restoredPath,
-        maxSupportedDatabaseSchemaVersion: "0016"
+        maxSupportedDatabaseSchemaVersion: "0017"
       });
 
       const restored = Database.open({ path: restoredPath });
@@ -130,7 +130,7 @@ describe("M10 ops: integrity, backup, retention", () => {
       ).map((v) => v.version);
       expect(versions).toContain("0009");
       expect(versions).toContain("0014");
-      expect(versions).toContain("0016");
+      expect(versions).toContain("0017");
       restored.close();
     } finally {
       rmSync(root, { recursive: true, force: true });

@@ -91,7 +91,7 @@ describe("N3 workflow feedback / late-gap loop", () => {
 
   it("detects late gap → RT resolve → revise → resolution quality (UAT Phase B)", async () => {
     expect(SERVICE_VERSION).toMatch(/^0\.(1[3-9]|[2-9]\d)\.\d+$/);
-    expect(CURRENT_DATABASE_SCHEMA_VERSION).toMatch(/^001[1-6]$/);
+    expect(CURRENT_DATABASE_SCHEMA_VERSION).toMatch(/^001[1-7]$/);
 
     const pkgId = "evpkg_n3_no_binding";
     await request(app)

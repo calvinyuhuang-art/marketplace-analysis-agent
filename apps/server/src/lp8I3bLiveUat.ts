@@ -527,10 +527,10 @@ async function publishSubmitted(input: {
 }
 
 async function main() {
-  assert(SERVICE_VERSION === "0.19.1", "MAA service must be 0.19.1");
+  assert(SERVICE_VERSION === "0.20.0", "MAA service must be 0.20.0");
   assert(
-    CURRENT_DATABASE_SCHEMA_VERSION === "0016",
-    "schema version must be 0016"
+    CURRENT_DATABASE_SCHEMA_VERSION === "0017",
+    "schema version must be 0017"
   );
 
   const repoRoot = findRepoRoot();
@@ -652,9 +652,9 @@ async function main() {
     ]) {
       assert(caps.includes(required), `missing capability ${required}`);
     }
-    assert(status.maaDatabaseSchemaVersion === "0016", "schema 0016");
-    assert(status.packageIdentity?.contractsVersion === "0.8.0", "contracts 0.8.0");
-    assert(status.packageIdentity?.clientVersion === "0.8.0", "client 0.8.0");
+    assert(status.maaDatabaseSchemaVersion === "0017", "schema 0017");
+    assert(status.packageIdentity?.contractsVersion === "0.8.1", "contracts 0.8.1");
+    assert(status.packageIdentity?.clientVersion === "0.8.1", "client 0.8.1");
     record(6, "confirm_capabilities", true, caps.join(","));
 
     // 7–10. Trigger created feedback, transactional capture, publish, RO ack
@@ -953,7 +953,7 @@ async function main() {
         idempotencyKey: String(publishedCreated.idempotency_key),
         payload: JSON.parse(String(publishedCreated.payload_json)),
         metadata: {
-          producerServiceVersion: "0.19.1",
+          producerServiceVersion: "0.20.0",
           payloadSchemaVersion: "1.0",
           learningPlaneContractVersion: "1.0"
         }
@@ -990,7 +990,7 @@ async function main() {
         idempotencyKey: String(evaluatedPublished.idempotency_key),
         payload: JSON.parse(String(evaluatedPublished.payload_json)),
         metadata: {
-          producerServiceVersion: "0.19.1",
+          producerServiceVersion: "0.20.0",
           payloadSchemaVersion: "1.0",
           learningPlaneContractVersion: "1.0"
         }
@@ -1313,7 +1313,7 @@ async function main() {
     restoreBackup({
       backupPath: backup.backupPath,
       databasePath: restoredPath,
-      maxSupportedDatabaseSchemaVersion: "0016"
+      maxSupportedDatabaseSchemaVersion: "0017"
     });
     const restored = Database.open({ path: restoredPath });
     try {

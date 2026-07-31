@@ -1,7 +1,7 @@
 /**
  * LP8-I3c-a UAT-only MAA side process.
  *
- * Starts a real MAA 0.19.1 instance with Learning Plane adapter workers and exposes a
+ * Starts a real MAA 0.20.0 instance with Learning Plane adapter workers and exposes a
  * loopback control API so the Research Team orchestrator can trigger late-gap detection
  * and revision/evaluation without modifying production routes.
  *
@@ -63,11 +63,11 @@ function inboxByEvent(container: Container, eventId: string) {
 }
 
 async function main() {
-  if (SERVICE_VERSION !== "0.19.1") {
-    throw new Error(`Expected MAA SERVICE_VERSION 0.19.1, got ${SERVICE_VERSION}`);
+  if (SERVICE_VERSION !== "0.20.0") {
+    throw new Error(`Expected MAA SERVICE_VERSION 0.20.0, got ${SERVICE_VERSION}`);
   }
-  if (CURRENT_DATABASE_SCHEMA_VERSION !== "0016") {
-    throw new Error(`Expected schema 0016, got ${CURRENT_DATABASE_SCHEMA_VERSION}`);
+  if (CURRENT_DATABASE_SCHEMA_VERSION !== "0017") {
+    throw new Error(`Expected schema 0017, got ${CURRENT_DATABASE_SCHEMA_VERSION}`);
   }
 
   const repoRoot = findRepoRoot();

@@ -87,7 +87,7 @@ describe("N6 comparative analysis + deprecation hide", () => {
   });
 
   it("runs comparative analysis and keeps propose_memory_update off capabilities", async () => {
-    expect(SERVICE_VERSION).toMatch(/^0\.(16|17|18|19)\.\d+$/);
+    expect(SERVICE_VERSION).toMatch(/^0\.(16|17|18|19|20)\.\d+$/);
     expect(Number(CURRENT_DATABASE_SCHEMA_VERSION)).toBeGreaterThanOrEqual(14);
 
     const caps = await request(app).get("/v1/capabilities");

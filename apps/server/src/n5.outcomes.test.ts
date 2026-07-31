@@ -87,8 +87,8 @@ describe("N5 outcome events / reassessment", () => {
   });
 
   it("ingests outcomes, reassesses with responsibility filter, keeps history immutable", async () => {
-    expect(SERVICE_VERSION).toMatch(/^0\.(15|16|17|18|19)\.\d+$/);
-    expect(CURRENT_DATABASE_SCHEMA_VERSION).toMatch(/^001[3-6]$/);
+    expect(SERVICE_VERSION).toMatch(/^0\.(15|16|17|18|19|20)\.\d+$/);
+    expect(CURRENT_DATABASE_SCHEMA_VERSION).toMatch(/^001[3-7]$/);
 
     const pkgId = "evpkg_n5_pricing";
     await request(app).post("/v1/evidence-packages").send(pricingWithBindingFixture(pkgId));

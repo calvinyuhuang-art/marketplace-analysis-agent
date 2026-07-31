@@ -67,8 +67,8 @@ describe("LP8-I3b Learning Plane adapter", () => {
     const config = makeConfig();
     const container = startContainer(config);
     const app = createApp(container);
-    expect(container.serviceVersion).toBe("0.19.1");
-    expect(container.databaseSchemaVersion).toBe("0016");
+    expect(container.serviceVersion).toBe("0.20.0");
+    expect(container.databaseSchemaVersion).toBe("0017");
     expect(container.learningPlane?.config.enabled).toBe(false);
     const health = await request(app).get("/health").expect(200);
     expect(health.body.version).toBe(SERVICE_VERSION);
@@ -80,8 +80,8 @@ describe("LP8-I3b Learning Plane adapter", () => {
       receiveMode: "disabled",
       declaredCapabilities: [],
       packageIdentity: {
-        clientVersion: "0.8.0",
-        contractsVersion: "0.8.0",
+        clientVersion: "0.8.1",
+        contractsVersion: "0.8.1",
         apiCompat: "2026.07"
       }
     });
@@ -89,7 +89,7 @@ describe("LP8-I3b Learning Plane adapter", () => {
     expect(JSON.stringify(status.body)).not.toMatch(/apiKey|operatorToken|callbackVerificationSecret/i);
   });
 
-  it("applies migration 0016 with expected tables, indexes, and uniqueness", () => {
+  it("applies migration 0017 with expected tables, indexes, and uniqueness", () => {
     const config = makeConfig();
     const container = startContainer(config);
     const db = container.database.db;
@@ -112,8 +112,8 @@ describe("LP8-I3b Learning Plane adapter", () => {
         version: string;
       }[]
     ).map((row) => row.version);
-    expect(versions).toContain("0016");
-    expect(CURRENT_DATABASE_SCHEMA_VERSION).toBe("0016");
+    expect(versions).toContain("0017");
+    expect(CURRENT_DATABASE_SCHEMA_VERSION).toBe("0017");
 
     const repo = new LearningPlaneAdapterRepository(db);
     repo.recordProcessingEvent({ eventKind: "learning_plane.adapter_enabled", detail: { t: 1 } });
@@ -204,8 +204,8 @@ describe("LP8-I3b Learning Plane adapter", () => {
       "events.receive",
       "events.acknowledge"
     ]);
-    expect(status.body.packageIdentity.clientVersion).toBe("0.8.0");
-    expect(status.body.maaDatabaseSchemaVersion).toBe("0016");
+    expect(status.body.packageIdentity.clientVersion).toBe("0.8.1");
+    expect(status.body.maaDatabaseSchemaVersion).toBe("0017");
 
     const callback = await request(app)
       .post("/v1/learning-plane/deliveries")
@@ -404,7 +404,7 @@ describe("LP8-I3b Learning Plane adapter", () => {
     restoreBackup({
       backupPath: backup.backupPath,
       databasePath: restoredPath,
-      maxSupportedDatabaseSchemaVersion: "0016"
+      maxSupportedDatabaseSchemaVersion: "0017"
     });
     const restored = Database.open({ path: restoredPath });
     const restoredTables = (
