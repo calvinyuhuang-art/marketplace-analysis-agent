@@ -66,11 +66,11 @@ async function main(): Promise<void> {
     MAA_LEARNING_PLANE_VALIDATION_RECEIPT_ENABLED: "true",
     MAA_LEARNING_PLANE_ACTIVATION_RECEIPT_ENABLED: "true",
     MAA_LEARNING_PLANE_REPLAY_BRIDGE_ENABLED:
-      process.env.MAA_LEARNING_PLANE_REPLAY_BRIDGE_ENABLED ?? "false",
+      process.env.MAA_LEARNING_PLANE_REPLAY_BRIDGE_ENABLED ?? "true",
     MAA_LEARNING_PLANE_REPLAY_EXECUTE_ENABLED:
-      process.env.MAA_LEARNING_PLANE_REPLAY_EXECUTE_ENABLED ?? "false",
+      process.env.MAA_LEARNING_PLANE_REPLAY_EXECUTE_ENABLED ?? "true",
     MAA_LEARNING_PLANE_REPLAY_REPORT_ENABLED:
-      process.env.MAA_LEARNING_PLANE_REPLAY_REPORT_ENABLED ?? "false",
+      process.env.MAA_LEARNING_PLANE_REPLAY_REPORT_ENABLED ?? "true",
     MAA_LEARNING_PLANE_GRANDFATHER_REGISTER_ENABLED: "true"
   });
 
@@ -93,13 +93,16 @@ async function main(): Promise<void> {
   });
   const maaBase = `http://${host}:${maaPort}`;
 
-  const bootstrap = await fetch(`${maaBase}/v1/integrations/learning-plane/bootstrap`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ operatorToken, learningPlaneBaseUrl: lpBase })
-  });
-  if (!bootstrap.ok) {
-    throw new Error(`MAA bootstrap failed ${bootstrap.status} ${await bootstrap.text()}`);
+  const bootstrapNeeded = !existsSync(secretFile);
+  if (bootstrapNeeded) {
+    const bootstrap = await fetch(`${maaBase}/v1/integrations/learning-plane/bootstrap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ operatorToken, learningPlaneBaseUrl: lpBase })
+    });
+    if (!bootstrap.ok) {
+      throw new Error(`MAA bootstrap failed ${bootstrap.status} ${await bootstrap.text()}`);
+    }
   }
   container.learningPlane!.start();
   const reconcile = await fetch(
@@ -150,7 +153,8 @@ async function main(): Promise<void> {
               "lp_gov_bridge_outbox",
               "lp_gov_bridge_inbox",
               "lp_legacy_local_registrations",
-              "procedural_rule_activations"
+              "procedural_rule_activations",
+              "lp_replay_bridge_runs"
             ]);
             if (!table || !allowed.has(table)) {
               return send(400, { error: "disallowed table" });
@@ -159,6 +163,29 @@ async function main(): Promise<void> {
               .prepare(`SELECT COUNT(*) AS c FROM ${table}`)
               .get() as { c: number };
             return send(200, { table, count: row.c });
+          }
+          if (req.method === "POST" && url.pathname === "/uat/replay/tick-execute") {
+            const n = Number(url.searchParams.get("limit") ?? "5");
+            // UAT force: run accepted jobs even when production execute flag is off.
+            const executed =
+              container.learningPlane?.governanceBridge?.executeAcceptedReplayJobs(
+                Number.isFinite(n) ? n : 5,
+                { force: true }
+              ) ?? 0;
+            return send(200, { executed, forced: true });
+          }
+          if (req.method === "GET" && url.pathname === "/uat/replay/runs") {
+            const replayJobId = url.searchParams.get("replayJobId");
+            const rows = replayJobId
+              ? container.database.db
+                  .prepare(`SELECT * FROM lp_replay_bridge_runs WHERE replay_job_id = ?`)
+                  .all(replayJobId)
+              : container.database.db
+                  .prepare(
+                    `SELECT * FROM lp_replay_bridge_runs ORDER BY created_at DESC LIMIT 50`
+                  )
+                  .all();
+            return send(200, { runs: rows });
           }
           if (req.method === "GET" && url.pathname === "/uat/active-version") {
             const ruleKey = url.searchParams.get("ruleKey");

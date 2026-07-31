@@ -120,7 +120,7 @@ export function declaredCapabilitiesForFlags(
   if (config.governanceBridgeEnabled && config.activationReceiptEnabled) {
     caps.push("activation.receipt_submit", "rollback.receipt_submit");
   }
-  if (config.replayBridgeEnabled && config.replayExecuteEnabled) {
+  if (config.replayBridgeEnabled) {
     caps.push("replay.execute", "replay.status_submit");
   }
   if (config.replayBridgeEnabled && config.replayReportEnabled) {

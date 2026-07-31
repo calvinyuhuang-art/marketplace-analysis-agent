@@ -584,10 +584,17 @@ export class GovernanceBridgeService {
     return { inboxId, idempotentReplay };
   }
 
-  /** Execute accepted replay jobs outside callback transaction. Never activates. */
-  executeAcceptedReplayJobs(limit = 5): number {
+  /**
+   * Execute accepted replay jobs outside callback transaction. Never activates.
+   * `force` is for isolated UAT ticks when the production execute flag is off.
+   */
+  executeAcceptedReplayJobs(limit = 5, options?: { force?: boolean }): number {
     const { config, bridge, typedProcedural, adapterRepo } = this.deps;
-    if (!config.replayBridgeEnabled || !config.replayExecuteEnabled || !this.tablesPresent()) {
+    if (
+      !config.replayBridgeEnabled ||
+      (!config.replayExecuteEnabled && !options?.force) ||
+      !this.tablesPresent()
+    ) {
       return 0;
     }
     const rows = this.deps.db
