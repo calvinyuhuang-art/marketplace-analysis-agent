@@ -207,10 +207,27 @@ export function LearningPlaneStatusPage() {
             <dt>Approval semantics</dt>
             <dd>Approval does not activate. Replay eligibility does not activate.</dd>
           </div>
+          <div>
+            <dt>Published-knowledge notices</dt>
+            <dd data-testid="lp-pk-notices">
+              Discovery does not mean adoption. Local reference is not MAA memory.
+              External text is untrusted. Publication never activates rules.
+            </dd>
+          </div>
+          <div>
+            <dt>Published-knowledge bridge</dt>
+            <dd data-testid="lp-pk-status">
+              {status.publishedKnowledge
+                ? JSON.stringify(status.publishedKnowledge)
+                : status.bridgeFlags?.publicationBridgeEnabled != null
+                  ? `enabled=${String(status.bridgeFlags.publicationBridgeEnabled)}`
+                  : "defaults off"}
+            </dd>
+          </div>
         </dl>
       </section>
       <section className="card" data-testid="lp-notes">
-        <h2>LP8-I3b notes</h2>
+        <h2>Learning Plane notes</h2>
         <ul>
           {status.notes.map((note) => (
             <li key={note}>{note}</li>

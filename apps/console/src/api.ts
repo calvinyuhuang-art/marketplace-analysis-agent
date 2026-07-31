@@ -675,5 +675,11 @@ export interface LearningPlaneStatus {
     replayExecuteEnabled: boolean;
     replayReportEnabled: boolean;
     grandfatherRegisterEnabled: boolean;
+    publicationBridgeEnabled?: boolean;
+    publicationSubmitEnabled?: boolean;
+    discoveryEnabled?: boolean;
+    localReferenceEnabled?: boolean;
+    externalRetrievalEnabled?: boolean;
   };
+  publishedKnowledge?: Record<string, unknown>;
 }
