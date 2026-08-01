@@ -108,7 +108,12 @@ afterEach(async () => {
   }
   while (dirs.length) {
     const dir = dirs.pop();
-    if (dir) rmSync(dir, { recursive: true, force: true });
+    if (!dir) continue;
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // Windows may hold log handles briefly after shutdown; ignore cleanup races.
+    }
   }
 });
 
