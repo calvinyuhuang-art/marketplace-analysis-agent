@@ -57,6 +57,7 @@ export interface RunAnalysisInput {
   approvedMemory?: import("@maa/contracts").MemoryPromptItem[];
   failureCorrections?: import("@maa/contracts").MemoryPromptItem[];
   proceduralRules?: import("@maa/contracts").ProceduralRulePromptItem[];
+  externalKnowledgeSection?: string;
   fixtureKey?: string;
   promptVersion?: string;
 }
@@ -123,7 +124,8 @@ export async function runStructuredAnalysis(
     compareEvidenceItems: input.compareEvidenceItems,
     approvedMemory: input.approvedMemory,
     failureCorrections: input.failureCorrections,
-    proceduralRules: input.proceduralRules
+    proceduralRules: input.proceduralRules,
+    externalKnowledgeSection: input.externalKnowledgeSection
   });
 
   const inputArtifact = deps.artifactStore.writeJson(

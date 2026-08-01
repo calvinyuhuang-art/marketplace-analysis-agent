@@ -361,3 +361,5 @@ export * from "./governanceCallbackRoute.js";
 export * from "./replayCallbackRoute.js";
 export * from "./workflowFeedbackCapture.js";
 export * from "./workflowFeedbackMapping.js";
+export * from "./appendExternalKnowledgeSection.js";
+export * from "./recallAnalysisContext.js";

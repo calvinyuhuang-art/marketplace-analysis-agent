@@ -85,6 +85,29 @@ export interface FakeWorkflowOptions {
       analysisAreas: AnalysisArea[];
     }) => import("@maa/contracts").ProceduralRulePromptItem[];
     projects?: import("@maa/database").ProjectsRepository;
+    /** LP8-I6d: optional external published-knowledge assembly (server-wired). */
+    recallAnalysisContext?: (input: {
+      runId: string;
+      projectId: string;
+      query: string;
+      scope: {
+        projectId: string;
+        platform?: string;
+        marketplace?: string;
+        category?: string;
+        productType?: string;
+        analysisAreas: AnalysisArea[];
+      };
+      requestedAreas: AnalysisArea[];
+      proceduralRules?: import("@maa/contracts").ProceduralRulePromptItem[];
+    }) => {
+      approved: import("@maa/contracts").MemoryPromptItem[];
+      failureCorrections: import("@maa/contracts").MemoryPromptItem[];
+      proceduralRules?: import("@maa/contracts").ProceduralRulePromptItem[];
+      assemblyId: string;
+      externalKnowledgeSection?: string;
+      combinedMemorySection?: string;
+    };
   };
   /** N1: experience/evaluation capture hooks (duck-typed; implemented by ExperienceService). */
   experience?: {
@@ -634,6 +657,7 @@ async function executeAnalysisPhase(
     failureCorrections: import("@maa/contracts").MemoryPromptItem[];
     proceduralRules?: import("@maa/contracts").ProceduralRulePromptItem[];
     assemblyId: string;
+    externalKnowledgeSection?: string;
   },
   workflowFeedback?: FakeWorkflowOptions["workflowFeedback"],
   experience?: FakeWorkflowOptions["experience"]
@@ -687,6 +711,7 @@ async function executeAnalysisPhase(
     approvedMemory: recalled?.approved,
     failureCorrections: recalled?.failureCorrections,
     proceduralRules: recalled?.proceduralRules,
+    externalKnowledgeSection: recalled?.externalKnowledgeSection,
     fixtureKey
   });
 
@@ -807,6 +832,7 @@ function executeMemoryRecall(
   failureCorrections: import("@maa/contracts").MemoryPromptItem[];
   proceduralRules: import("@maa/contracts").ProceduralRulePromptItem[];
   assemblyId: string;
+  externalKnowledgeSection?: string;
 } {
   const run = deps.runs.getById(runId)!;
   const request = deps.requests.getById(run.requestId)!;
@@ -828,21 +854,42 @@ function executeMemoryRecall(
       analysisAreas: requestedAreas
     }) ?? [];
 
-  const result = memory.service.recallForRun({
-    runId,
+  const scope = {
     projectId: request.projectId,
-    query: queryParts.join(" "),
-    scope: {
-      projectId: request.projectId,
-      platform: project?.platform ?? (request.capabilityId?.includes("amazon") ? "amazon" : undefined),
-      marketplace: project?.marketplace ?? "US",
-      category: project?.category,
-      productType: project?.productType,
-      analysisAreas: requestedAreas
-    },
-    requestedAreas,
-    proceduralRules
-  });
+    platform: project?.platform ?? (request.capabilityId?.includes("amazon") ? "amazon" : undefined),
+    marketplace: project?.marketplace ?? "US",
+    category: project?.category,
+    productType: project?.productType,
+    analysisAreas: requestedAreas
+  };
+  const query = queryParts.join(" ");
+
+  const result = memory.recallAnalysisContext
+    ? memory.recallAnalysisContext({
+        runId,
+        projectId: request.projectId,
+        query,
+        scope,
+        requestedAreas,
+        proceduralRules
+      })
+    : (() => {
+        const recall = memory.service.recallForRun({
+          runId,
+          projectId: request.projectId,
+          query,
+          scope,
+          requestedAreas,
+          proceduralRules
+        });
+        return {
+          approved: recall.approved,
+          failureCorrections: recall.failureCorrections,
+          proceduralRules,
+          assemblyId: recall.assembly.assemblyId,
+          externalKnowledgeSection: undefined
+        };
+      })();
 
   deps.events.insert({
     eventId: newId(IdPrefix.event),
@@ -854,9 +901,9 @@ function executeMemoryRecall(
     fromStatus: "recalling_memory",
     toStatus: "recalling_memory",
     detailJson: JSON.stringify({
-      assemblyId: result.assembly.assemblyId,
-      selectedCount: result.assembly.selectedMemoryIds.length,
-      omittedCount: result.assembly.omitted.length,
+      assemblyId: result.assemblyId,
+      selectedCount: result.approved.length,
+      externalKnowledgeIncluded: Boolean(result.externalKnowledgeSection),
       proceduralRuleCount: proceduralRules.length
     }),
     createdAt: new Date().toISOString()
@@ -866,8 +913,9 @@ function executeMemoryRecall(
     {
       eventType: "memory_recalled",
       runId,
-      selected: result.assembly.selectedMemoryIds.length,
-      proceduralRules: proceduralRules.length
+      selected: result.approved.length,
+      proceduralRules: proceduralRules.length,
+      externalKnowledgeIncluded: Boolean(result.externalKnowledgeSection)
     },
     "project memory recalled"
   );
@@ -876,7 +924,8 @@ function executeMemoryRecall(
     approved: result.approved,
     failureCorrections: result.failureCorrections,
     proceduralRules,
-    assemblyId: result.assembly.assemblyId
+    assemblyId: result.assemblyId,
+    externalKnowledgeSection: result.externalKnowledgeSection
   };
 }
 

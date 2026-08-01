@@ -41,6 +41,33 @@ function requireBridge(
   }
 }
 
+const ACTIVE_LIKE_CHALLENGE_STATES = new Set([
+  "active",
+  "pending",
+  "open",
+  "challenged",
+  "contested"
+]);
+const TERMINAL_CATALOG_STATES = new Set(["revoked", "retired", "superseded", "expired"]);
+
+function externalReferenceSkipReason(ref: PkLocalReferenceRow): string | null {
+  if (ref.challenge_state && ACTIVE_LIKE_CHALLENGE_STATES.has(ref.challenge_state)) {
+    return "challenge_active";
+  }
+  if (ref.catalog_state && TERMINAL_CATALOG_STATES.has(ref.catalog_state)) {
+    return "catalog_terminal";
+  }
+  if (ref.local_freshness_state === "expired") {
+    return "freshness_expired";
+  }
+  if (ref.local_freshness_state === "stale") {
+    if (!ref.offline_grace_deadline || new Date(ref.offline_grace_deadline) < new Date()) {
+      return "freshness_stale";
+    }
+  }
+  return null;
+}
+
 export class PublishedKnowledgeBridgeService {
   constructor(private readonly deps: PublishedKnowledgeBridgeServiceDeps) {}
 
@@ -546,20 +573,42 @@ export class PublishedKnowledgeBridgeService {
     const now = new Date().toISOString();
     let rank = 1000; // below local memory
     for (const ref of refs) {
+      const skipReason = externalReferenceSkipReason(ref);
+      if (skipReason) {
+        this.recordExternalReferenceSkipped(skipReason, ref, input.runId);
+        continue;
+      }
       if (ref.offline_grace_deadline && new Date(ref.offline_grace_deadline) < new Date()) {
         this.deps.repo.updateLocalReference(ref.local_reference_id, {
           local_retrieval_eligible: 0,
           local_review_state: "disabled",
           local_freshness_state: "stale"
         });
+        this.recordExternalReferenceSkipped("offline_grace_expired", ref, input.runId);
         continue;
       }
       const cache = this.deps.repo.getPackageCache(ref.package_sha256);
-      const meta = cache?.meta_json
+      if (!cache) {
+        this.recordExternalReferenceSkipped("package_cache_missing", ref, input.runId);
+        continue;
+      }
+      const cachePublicationId = String(cache.published_knowledge_id ?? "");
+      if (cachePublicationId !== ref.published_knowledge_id) {
+        this.recordExternalReferenceSkipped("publication_id_mismatch", ref, input.runId);
+        continue;
+      }
+      // package_sha256 is the Learning Plane package identity (cache key), not sha256(body_json).
+      // Integrity: cache row must resolve under ref.package_sha256 and match published_knowledge_id.
+      if (String(cache.package_sha256 ?? "") !== ref.package_sha256) {
+        this.recordExternalReferenceSkipped("package_hash_mismatch", ref, input.runId);
+        continue;
+      }
+      const bodyJson = String(cache.body_json ?? "");
+      const meta = cache.meta_json
         ? (JSON.parse(String(cache.meta_json)) as Record<string, unknown>)
         : {};
-      const body = cache?.body_json
-        ? (JSON.parse(String(cache.body_json)) as {
+      const body = bodyJson
+        ? (JSON.parse(bodyJson) as {
             sections?: Array<{ content?: string }>;
           })
         : {};
@@ -635,6 +684,18 @@ export class PublishedKnowledgeBridgeService {
       items,
       useTraceIds
     };
+  }
+
+  private recordExternalReferenceSkipped(
+    code: string,
+    ref: PkLocalReferenceRow,
+    runId?: string
+  ): void {
+    if (!this.deps.adapterRepo.tablesPresent()) return;
+    this.deps.adapterRepo.recordProcessingEvent({
+      eventKind: "learning_plane.external_reference_skipped",
+      detail: { code, localReferenceId: ref.local_reference_id, runId: runId ?? null }
+    });
   }
 
   recordInfluence(input: {

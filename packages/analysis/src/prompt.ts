@@ -76,6 +76,7 @@ export interface AnalysisPromptPayload {
   approvedMemory: MemoryPromptItem[];
   failureCorrections: MemoryPromptItem[];
   proceduralRules: import("@maa/contracts").ProceduralRulePromptItem[];
+  externalKnowledgeSection?: string;
   outputSchemaVersion: string;
   requiredOutputExample: typeof REQUIRED_OUTPUT_EXAMPLE;
   /** Present for comparative_analysis — baseline side items. */
@@ -96,6 +97,7 @@ export function buildAnalysisPromptPayload(input: {
   approvedMemory?: MemoryPromptItem[];
   failureCorrections?: MemoryPromptItem[];
   proceduralRules?: import("@maa/contracts").ProceduralRulePromptItem[];
+  externalKnowledgeSection?: string;
 }): AnalysisPromptPayload {
   const mapItem = (item: EvidenceItem) => ({
     evidenceId: item.evidenceId,
@@ -119,6 +121,7 @@ export function buildAnalysisPromptPayload(input: {
     approvedMemory: input.approvedMemory ?? [],
     failureCorrections: input.failureCorrections ?? [],
     proceduralRules: input.proceduralRules ?? [],
+    externalKnowledgeSection: input.externalKnowledgeSection?.trim() || undefined,
     outputSchemaVersion: input.plan.schemaVersion,
     requiredOutputExample: REQUIRED_OUTPUT_EXAMPLE,
     baselineEvidenceItems: input.baselineEvidenceItems?.map(mapItem),

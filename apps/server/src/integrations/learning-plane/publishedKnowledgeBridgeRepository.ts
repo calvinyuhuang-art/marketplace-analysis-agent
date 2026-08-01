@@ -355,7 +355,11 @@ export class PublishedKnowledgeBridgeRepository {
     return this.db
       .prepare(
         `SELECT * FROM lp_pk_local_references
-         WHERE local_retrieval_eligible = 1 AND local_review_state = 'eligible_for_retrieval'
+         WHERE local_retrieval_eligible = 1
+           AND local_review_state = 'eligible_for_retrieval'
+           AND (challenge_state IS NULL OR challenge_state NOT IN ('active','pending','open','challenged','contested'))
+           AND (catalog_state IS NULL OR catalog_state NOT IN ('revoked','retired','superseded','expired'))
+           AND (local_freshness_state IS NULL OR local_freshness_state NOT IN ('expired','stale'))
          ORDER BY updated_at DESC LIMIT ?`
       )
       .all(limit) as PkLocalReferenceRow[];

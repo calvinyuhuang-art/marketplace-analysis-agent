@@ -81,6 +81,8 @@ import {
   createLearningPlaneAdapter,
   type LearningPlaneAdapter
 } from "../integrations/learning-plane/index";
+import { recallAnalysisContextForRun } from "../integrations/learning-plane/recallAnalysisContext.js";
+import type { PublishedKnowledgeBridgeService } from "../integrations/learning-plane/publishedKnowledgeBridgeService.js";
 
 export const SERVICE_NAME = "marketplace-analysis-agent";
 export const SERVICE_VERSION = "0.21.0";
@@ -362,6 +364,10 @@ export function createContainer(
     } | null;
   } = { current: null };
 
+  const publishedKnowledgeBridgeBridge: {
+    current: PublishedKnowledgeBridgeService | null;
+  } = { current: null };
+
   const workflowFeedbackService = new WorkflowFeedbackService({
     feedback: repos.workflowFeedback,
     fingerprints: repos.gapFingerprints,
@@ -568,7 +574,13 @@ export function createContainer(
         resolveProceduralRules: (input) => [
           ...learningService.resolveActiveProceduralRules(input),
           ...typedProceduralService.resolveActivePromptItems()
-        ]
+        ],
+        recallAnalysisContext: (input) =>
+          recallAnalysisContextForRun(
+            memoryService,
+            publishedKnowledgeBridgeBridge.current,
+            input
+          )
       },
       experience: {
         captureStarted: (input) => {
@@ -624,6 +636,7 @@ export function createContainer(
     memoryItems: repos.memoryItems
   });
   learningPlaneCaptureBridge.current = learningPlane.capture;
+  publishedKnowledgeBridgeBridge.current = learningPlane.publishedKnowledgeBridge;
   // Adapter start never blocks MAA; failures are recorded as diagnostics.
   try {
     learningPlane.start();
