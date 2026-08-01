@@ -14,11 +14,12 @@ import {
   resolveLearningPlaneAdapterConfig,
   type LearningPlaneAdapterConfig
 } from "./config.js";
-import type { BootstrapRequest, LearningPlaneStatusResponse } from "./contracts.js";
+import type { BootstrapRequest, LearningPlaneStatusResponse, RotationStatus } from "./contracts.js";
 import { LearningPlaneHealthService } from "./healthService.js";
 import { LearningPlaneRegistrationService } from "./registrationService.js";
 import { LearningPlaneSecretStore } from "./secretStore.js";
 import { buildLearningPlaneStatus } from "./statusService.js";
+import { LearningPlaneRotationService } from "./rotationService.js";
 import { probeLearningPlaneApiCompat } from "./clientFactory.js";
 import { WorkflowFeedbackLearningPlaneCapture } from "./workflowFeedbackCapture.js";
 import { LearningPlaneOutboxWorker } from "./outboxWorker.js";
@@ -47,6 +48,24 @@ export type LearningPlaneAdapter = {
   bootstrap: (request: BootstrapRequest) => ReturnType<typeof bootstrapLearningPlaneAdapter>;
   reconcile: () => ReturnType<LearningPlaneRegistrationService["reconcile"]>;
   reportHealth: () => ReturnType<LearningPlaneHealthService["report"]>;
+  applyCredentialRotation: (input: {
+    credentialId: string;
+    agentApiKey: string;
+    previousCredentialId?: string;
+    overlapExpiresAt?: string;
+  }) => { credentialId: string; rotationStatus: RotationStatus };
+  applyCallbackKeyRotation: (input: {
+    callbackKeyId: string;
+    callbackVerificationSecret: string;
+    previousCallbackKeyId?: string;
+    previousCallbackVerificationSecret?: string;
+    overlapExpiresAt?: string;
+    acceptedCallbackKeyIds?: string[];
+  }) => { callbackKeyId: string; rotationStatus: RotationStatus };
+  completeCredentialRotation: () => { rotationStatus: RotationStatus };
+  completeCallbackKeyRotation: () => { rotationStatus: RotationStatus };
+  rollbackCredentialRotation: () => { credentialId: string; rotationStatus: RotationStatus };
+  operatorRetryOutbox: (outboxId: string) => { outboxId: string; status: string };
   start: () => void;
   stop: () => Promise<void>;
 };
@@ -68,6 +87,7 @@ export function createLearningPlaneAdapter(input: {
   const config = resolveLearningPlaneAdapterConfig(input.rawConfig, input.repoRoot);
   const repo = new LearningPlaneAdapterRepository(input.db);
   const secrets = new LearningPlaneSecretStore(config.secretFilePath);
+  const rotation = new LearningPlaneRotationService(secrets, repo);
   const registration = new LearningPlaneRegistrationService({
     config,
     repo,
@@ -221,6 +241,24 @@ export function createLearningPlaneAdapter(input: {
     },
     reportHealth() {
       return health.report();
+    },
+    applyCredentialRotation(input) {
+      return rotation.applyCredentialRotation(input);
+    },
+    applyCallbackKeyRotation(input) {
+      return rotation.applyCallbackKeyRotation(input);
+    },
+    completeCredentialRotation() {
+      return rotation.completeCredentialRotation();
+    },
+    completeCallbackKeyRotation() {
+      return rotation.completeCallbackKeyRotation();
+    },
+    rollbackCredentialRotation() {
+      return rotation.rollbackCredentialRotation();
+    },
+    operatorRetryOutbox(outboxId) {
+      return rotation.operatorRetryOutbox(outboxId);
     },
     start() {
       syncFlagSettings();

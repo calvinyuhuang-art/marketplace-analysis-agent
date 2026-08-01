@@ -8,6 +8,26 @@ const BootstrapBodySchema = z.object({
   learningPlaneBaseUrl: z.string().url().optional()
 });
 
+const ApplyCredentialRotationSchema = z.object({
+  credentialId: z.string().min(1),
+  agentApiKey: z.string().min(32),
+  previousCredentialId: z.string().min(1).optional(),
+  overlapExpiresAt: z.string().datetime().optional()
+});
+
+const ApplyCallbackKeyRotationSchema = z.object({
+  callbackKeyId: z.string().min(1),
+  callbackVerificationSecret: z.string().min(32),
+  previousCallbackKeyId: z.string().min(1).optional(),
+  previousCallbackVerificationSecret: z.string().min(32).optional(),
+  overlapExpiresAt: z.string().datetime().optional(),
+  acceptedCallbackKeyIds: z.array(z.string().min(1)).optional()
+});
+
+const OutboxIdParamSchema = z.object({
+  outboxId: z.string().min(1)
+});
+
 export function learningPlaneIntegrationRoutes(container: Container): Router {
   const router = Router();
 
@@ -164,6 +184,117 @@ export function learningPlaneIntegrationRoutes(container: Container): Router {
       next(error);
     }
   });
+
+  router.post(
+    "/v1/integrations/learning-plane/credentials/apply-rotation",
+    async (req, res, next) => {
+      try {
+        if (!container.learningPlane) {
+          throw new AppError({
+            code: "VALIDATION_ERROR",
+            message: "Learning Plane adapter is unavailable."
+          });
+        }
+        const body = ApplyCredentialRotationSchema.parse(req.body ?? {});
+        const result = container.learningPlane.applyCredentialRotation(body);
+        res.status(200).json({ status: "applied", ...result });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    "/v1/integrations/learning-plane/callback-keys/apply-rotation",
+    async (req, res, next) => {
+      try {
+        if (!container.learningPlane) {
+          throw new AppError({
+            code: "VALIDATION_ERROR",
+            message: "Learning Plane adapter is unavailable."
+          });
+        }
+        const body = ApplyCallbackKeyRotationSchema.parse(req.body ?? {});
+        const result = container.learningPlane.applyCallbackKeyRotation(body);
+        res.status(200).json({ status: "applied", ...result });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    "/v1/integrations/learning-plane/credentials/complete-rotation",
+    async (_req, res, next) => {
+      try {
+        if (!container.learningPlane) {
+          throw new AppError({
+            code: "VALIDATION_ERROR",
+            message: "Learning Plane adapter is unavailable."
+          });
+        }
+        const result = container.learningPlane.completeCredentialRotation();
+        res.status(200).json({ status: "completed", ...result });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    "/v1/integrations/learning-plane/callback-keys/complete-rotation",
+    async (_req, res, next) => {
+      try {
+        if (!container.learningPlane) {
+          throw new AppError({
+            code: "VALIDATION_ERROR",
+            message: "Learning Plane adapter is unavailable."
+          });
+        }
+        const result = container.learningPlane.completeCallbackKeyRotation();
+        res.status(200).json({ status: "completed", ...result });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    "/v1/integrations/learning-plane/credentials/rollback-rotation",
+    async (_req, res, next) => {
+      try {
+        if (!container.learningPlane) {
+          throw new AppError({
+            code: "VALIDATION_ERROR",
+            message: "Learning Plane adapter is unavailable."
+          });
+        }
+        const result = container.learningPlane.rollbackCredentialRotation();
+        res.status(200).json({ status: "rolled_back", ...result });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    "/v1/integrations/learning-plane/outbox/:outboxId/retry",
+    async (req, res, next) => {
+      try {
+        if (!container.learningPlane) {
+          throw new AppError({
+            code: "VALIDATION_ERROR",
+            message: "Learning Plane adapter is unavailable."
+          });
+        }
+        const params = OutboxIdParamSchema.parse(req.params);
+        const result = container.learningPlane.operatorRetryOutbox(params.outboxId);
+        res.status(200).json({ action: "retry_scheduled", ...result });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 
   return router;
 }

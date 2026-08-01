@@ -417,6 +417,38 @@ export class LearningPlaneAdapterRepository {
       .run(timestamp, code, message.slice(0, 500), outboxId);
   }
 
+  operatorRetryOutbox(outboxId: string): LpOutboxRow | null {
+    const existing = this.getOutbox(outboxId);
+    if (!existing) return null;
+    if (existing.status !== "permanent_failure" && existing.status !== "retry_scheduled") {
+      return null;
+    }
+    const timestamp = now();
+    const result = this.db
+      .prepare(
+        `UPDATE lp_adapter_outbox SET
+           status='pending', next_attempt_at=?, updated_at=?,
+           lease_owner=NULL, lease_expires_at=NULL
+         WHERE outbox_id=?
+           AND status IN ('permanent_failure','retry_scheduled')`
+      )
+      .run(timestamp, timestamp, outboxId);
+    if (result.changes === 0) return null;
+    this.recordProcessingEvent({
+      eventKind: "learning_plane.outbox_operator_retry",
+      relatedOutboxId: outboxId,
+      correlationId: existing.correlation_id,
+      detail: {
+        priorStatus: existing.status,
+        eventType: existing.event_type,
+        workflowFeedbackId: existing.workflow_feedback_id,
+        resolutionId: existing.resolution_id,
+        evaluationId: existing.evaluation_id
+      }
+    });
+    return this.getOutbox(outboxId);
+  }
+
   releaseWaitingEvaluated(input: {
     workflowFeedbackId: string;
     resolutionId: string;

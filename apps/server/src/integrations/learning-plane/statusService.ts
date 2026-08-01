@@ -55,6 +55,37 @@ export function buildLearningPlaneStatus(input: {
     ? repo.countByStatus("lp_adapter_acknowledgements", "status")
     : {};
 
+  let loadedSecret: ReturnType<LearningPlaneSecretStore["load"]> = null;
+  if (secretsPresent) {
+    try {
+      loadedSecret = secrets.load();
+    } catch {
+      loadedSecret = null;
+    }
+  }
+
+  const rotation =
+    secretsPresent && loadedSecret
+      ? {
+          status: loadedSecret.rotationStatus ?? "idle",
+          credentialId: settings?.credential_id ?? loadedSecret.credentialId ?? null,
+          previousCredentialId: loadedSecret.previousCredentialId ?? null,
+          callbackKeyId: settings?.callback_key_id ?? loadedSecret.callbackKeyId ?? null,
+          previousCallbackKeyId: loadedSecret.previousCallbackKeyId ?? null,
+          acceptedCallbackKeyIds: loadedSecret.acceptedCallbackKeyIds ?? [],
+          overlapExpiresAt: loadedSecret.rotationOverlapExpiresAt ?? null
+        }
+      : undefined;
+
+  const queuePressure = repo.tablesPresent()
+    ? {
+        outboxPending: outboxCounts.pending ?? 0,
+        outboxRetryScheduled: outboxCounts.retry_scheduled ?? 0,
+        outboxPermanentFailure: outboxCounts.permanent_failure ?? 0,
+        oldestPendingAgeSeconds: repo.oldestPendingAgeSeconds()
+      }
+    : undefined;
+
   const notes: string[] = [
     "LP8-I3b production workflow-feedback adapter: created + evaluated publish; resolution_submitted receive.",
     "LP8-I4c governance/replay bridge available behind feature flags (default off).",
@@ -129,6 +160,8 @@ export function buildLearningPlaneStatus(input: {
       externalRetrievalEnabled: config.externalRetrievalEnabled
     },
     publishedKnowledge: input.publishedKnowledgeBridge?.getStatus(),
+    rotation,
+    queuePressure,
     notes
   };
 }
