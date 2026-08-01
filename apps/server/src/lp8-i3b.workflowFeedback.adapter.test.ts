@@ -76,10 +76,10 @@ describe("LP8-I3b production workflow-feedback adapter", () => {
     const contractsSha = createHash("sha256").update(readFileSync(contractsPath)).digest("hex");
     const clientSha = createHash("sha256").update(readFileSync(clientPath)).digest("hex");
     expect(contractsSha).toBe(
-      "36e79ba05eb34e88a57d014ff3caac95d852bffff758c3aaa5d50f81c21ea196"
+      "f4230c04bc0241401ae47a97b7d7cac877b19daf9ec8cc77fcc5f4666377c8fc"
     );
     expect(clientSha).toBe(
-      "1fef73dcc159e9a1ba1ae986e9f9f757c8d5927a0a8b42224a8376a1199ce335"
+      "edf98da929f155a02272c534d4d89bcf533564322799a0bbc8e758d377830c4d"
     );
     expect(identity.packageChecksum.contracts).toBe(contractsSha);
     expect(identity.packageChecksum.client).toBe(clientSha);
