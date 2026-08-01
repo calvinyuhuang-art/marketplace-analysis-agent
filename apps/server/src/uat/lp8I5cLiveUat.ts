@@ -5,14 +5,10 @@
  * Run (from MAA worktree, with Learning Plane available):
  *   pnpm exec tsx apps/server/src/uat/lp8I5cLiveUat.ts
  */
-import { createHash, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const maaRoot = path.resolve(here, "../../../..");
 const lpRoot = "C:\\projects\\Sales-System\\Learning-Plane";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -28,13 +24,11 @@ function record(id: string, ok: boolean, detail?: string) {
 async function main() {
   assert(fs.existsSync(lpRoot), "Learning Plane path missing");
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "lp8-i5c-uat-"));
-  const maaDb = path.join(temp, "maa.sqlite");
-  const lpDb = path.join(temp, "lp.sqlite");
   console.log(`UAT temp=${temp}`);
 
   // Import MAA after env would be set by loadConfig in createContainer.
   process.env.MAA_CONFIG_PROFILE = "test";
-  process.env.MAA_DATABASE_PATH = maaDb;
+  process.env.MAA_DATABASE_PATH = path.join(temp, "maa.sqlite");
   process.env.MAA_ARTIFACT_ROOT = path.join(temp, "maa-artifacts");
   process.env.MAA_LOG_ROOT = path.join(temp, "maa-logs");
   process.env.MAA_BACKUP_DIR = path.join(temp, "maa-backups");

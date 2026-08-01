@@ -42,6 +42,7 @@ export type LearningPlaneAdapter = {
   reconciliation: LearningPlaneReconciliationWorker;
   governanceBridge: GovernanceBridgeService | null;
   publishedKnowledgeBridge: PublishedKnowledgeBridgeService | null;
+  publishedKnowledgeOutboxWorker: PublishedKnowledgeOutboxWorker;
   getStatus: () => Promise<LearningPlaneStatusResponse>;
   bootstrap: (request: BootstrapRequest) => ReturnType<typeof bootstrapLearningPlaneAdapter>;
   reconcile: () => ReturnType<LearningPlaneRegistrationService["reconcile"]>;
@@ -194,6 +195,7 @@ export function createLearningPlaneAdapter(input: {
     reconciliation,
     governanceBridge,
     publishedKnowledgeBridge,
+    publishedKnowledgeOutboxWorker: pkOutboxWorker,
     async getStatus() {
       let reachable: boolean | null = null;
       if (config.enabled) {
