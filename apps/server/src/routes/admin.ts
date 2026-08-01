@@ -1,12 +1,16 @@
 import { Router } from "express";
-import { AppError, isApiAuthEnabled } from "@maa/contracts";
+import { AppError, isApiAuthEnabled, type Config } from "@maa/contracts";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   checkDatabaseIntegrity,
   createBackup,
   listBackups,
   purgeExpiredArtifacts,
-  restoreBackup
+  restoreBackup,
+  buildMaaRecoveryEntry
 } from "@maa/ops";
+import { loadLearningPlanePackageIdentity } from "../integrations/learning-plane/packageIdentity.js";
 import {
   CURRENT_DATABASE_SCHEMA_VERSION,
   type Container
@@ -16,6 +20,22 @@ import {
  * Local admin/ops endpoints. Require auth whenever an API key is configured;
  * when auth is disabled (dev/test without key), still available for local ops.
  */
+
+function maaFeatureFlagsSafe(raw: Config): Record<string, boolean | string | number | null> {
+  return {
+    MAA_CONFIG_PROFILE: raw.MAA_CONFIG_PROFILE,
+    MAA_ARTIFACT_RETENTION_DAYS: raw.MAA_ARTIFACT_RETENTION_DAYS,
+    MAA_LEARNING_PLANE_ENABLED: raw.MAA_LEARNING_PLANE_ENABLED,
+    MAA_LEARNING_PLANE_PUBLISH_ENABLED: raw.MAA_LEARNING_PLANE_PUBLISH_ENABLED,
+    MAA_LEARNING_PLANE_RECEIVE_ENABLED: raw.MAA_LEARNING_PLANE_RECEIVE_ENABLED,
+    MAA_LEARNING_PLANE_GOVERNANCE_BRIDGE_ENABLED: raw.MAA_LEARNING_PLANE_GOVERNANCE_BRIDGE_ENABLED,
+    MAA_LEARNING_PLANE_REPLAY_BRIDGE_ENABLED: raw.MAA_LEARNING_PLANE_REPLAY_BRIDGE_ENABLED,
+    MAA_LEARNING_PLANE_PUBLICATION_BRIDGE_ENABLED: raw.MAA_LEARNING_PLANE_PUBLICATION_BRIDGE_ENABLED,
+    MAA_LEARNING_PLANE_LOCAL_REFERENCE_ENABLED: raw.MAA_LEARNING_PLANE_LOCAL_REFERENCE_ENABLED,
+    MAA_LEARNING_PLANE_EXTERNAL_RETRIEVAL_ENABLED: raw.MAA_LEARNING_PLANE_EXTERNAL_RETRIEVAL_ENABLED
+  };
+}
+
 export function adminRoutes(container: Container): Router {
   const router = Router();
 
@@ -50,6 +70,31 @@ export function adminRoutes(container: Container): Router {
         artifactRoot: container.config.artifactRoot,
         notes: "api"
       });
+      const lpRepo = container.learningPlane?.repo;
+      const lpSettings = lpRepo?.tablesPresent() ? lpRepo.getSettings() : null;
+      const outboxCounts = lpRepo?.tablesPresent()
+        ? lpRepo.countByStatus("lp_adapter_outbox", "status")
+        : {};
+      const recoveryEntry = buildMaaRecoveryEntry({
+        serviceVersion: container.serviceVersion,
+        schemaVersion: container.databaseSchemaVersion,
+        commit: loadLearningPlanePackageIdentity(container.config.repoRoot)
+          .buildCommitOrSourceRevision,
+        backupPath: result.backupPath,
+        databaseFilename: result.manifest.databaseFile,
+        includeArtifacts,
+        integrityOk: result.manifest.integrity?.ok ?? false,
+        featureFlagsSafe: maaFeatureFlagsSafe(container.config.raw),
+        activeCredentialId: lpSettings?.credential_id ?? null,
+        activeCallbackKeyId: lpSettings?.callback_key_id ?? null,
+        outboxPending: outboxCounts.pending ?? 0,
+        outboxPermanentFailure: outboxCounts.permanent_failure ?? 0,
+        createdAt: result.manifest.createdAt
+      });
+      writeFileSync(
+        join(result.backupPath, "recovery-entry.json"),
+        JSON.stringify(recoveryEntry, null, 2)
+      );
       container.metrics.increment("backups_total");
       container.auditLog.append({
         actorType: "client",
