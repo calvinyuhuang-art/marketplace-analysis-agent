@@ -1,0 +1,3 @@
+# Learning Plane / SQL migrations must materialize as LF on all platforms.
+# Prevents Windows core.autocrlf from changing migration-runner checksums.
+migrations/*.sql text eol=lf
