@@ -1,4 +1,8 @@
-import { API_COMPAT_LABEL } from "@maa/contracts";
+import { API_COMPAT_LABEL, type BackupManifest } from "@maa/contracts";
+import { basename } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { listBackups } from "@maa/ops";
 import type { LearningPlaneAdapterRepository } from "./adapterRepository.js";
 import {
   declaredCapabilitiesForFlags,
@@ -14,6 +18,51 @@ import type { AdapterRuntimeState, LearningPlaneStatusResponse } from "./contrac
 import type { LearningPlaneSecretStore } from "./secretStore.js";
 import { loadLearningPlanePackageIdentity } from "./packageIdentity.js";
 import type { PublishedKnowledgeBridgeService } from "./publishedKnowledgeBridgeService.js";
+import { PublishedKnowledgeBridgeRepository } from "./publishedKnowledgeBridgeRepository.js";
+
+function buildRecoveryStatus(input: {
+  backupDir: string;
+  artifactRetentionDays: number;
+  publishedKnowledgeBridge?: PublishedKnowledgeBridgeService | null;
+  pkRepo?: PublishedKnowledgeBridgeRepository | null;
+}): NonNullable<LearningPlaneStatusResponse["recovery"]> {
+  const backups = listBackups(input.backupDir);
+  const latest = backups[0];
+  let lastIntegrityOk: boolean | null = null;
+  if (latest) {
+    try {
+      const manifest = JSON.parse(
+        readFileSync(join(latest.path, "manifest.json"), "utf8")
+      ) as BackupManifest;
+      lastIntegrityOk = manifest.integrity?.ok ?? null;
+    } catch {
+      lastIntegrityOk = null;
+    }
+  }
+
+  let localReferenceCount = 0;
+  let tombstoneOrDeletedReferenceCount = 0;
+  const pkRepo = input.pkRepo;
+  if (pkRepo?.tablesPresent()) {
+    localReferenceCount = pkRepo.countLocalReferences();
+    tombstoneOrDeletedReferenceCount = pkRepo.countTombstonedReferences();
+  } else if (input.publishedKnowledgeBridge?.tablesPresent()) {
+    const counts = input.publishedKnowledgeBridge.getStatus().counts as
+      | Record<string, number>
+      | undefined;
+    localReferenceCount = counts?.localReferences ?? 0;
+    tombstoneOrDeletedReferenceCount = counts?.tombstonedReferences ?? 0;
+  }
+
+  return {
+    lastBackupAt: latest?.createdAt ?? null,
+    lastBackupPathDisplay: latest ? basename(latest.path) : null,
+    lastIntegrityOk,
+    retentionDaysConfigured: input.artifactRetentionDays,
+    localReferenceCount,
+    tombstoneOrDeletedReferenceCount
+  };
+}
 
 export function buildLearningPlaneStatus(input: {
   config: LearningPlaneAdapterConfig;
@@ -23,7 +72,10 @@ export function buildLearningPlaneStatus(input: {
   databaseSchemaVersion: string;
   learningPlaneReachable: boolean | null;
   repoRoot: string;
+  backupDir?: string;
+  artifactRetentionDays?: number;
   publishedKnowledgeBridge?: PublishedKnowledgeBridgeService | null;
+  pkRepo?: PublishedKnowledgeBridgeRepository | null;
 }): LearningPlaneStatusResponse {
   const { config, repo, secrets, serviceVersion, databaseSchemaVersion } = input;
   const settings = repo.tablesPresent() ? repo.getSettings() : null;
@@ -160,6 +212,15 @@ export function buildLearningPlaneStatus(input: {
       externalRetrievalEnabled: config.externalRetrievalEnabled
     },
     publishedKnowledge: input.publishedKnowledgeBridge?.getStatus(),
+    recovery:
+      input.backupDir != null
+        ? buildRecoveryStatus({
+            backupDir: input.backupDir,
+            artifactRetentionDays: input.artifactRetentionDays ?? 0,
+            publishedKnowledgeBridge: input.publishedKnowledgeBridge,
+            pkRepo: input.pkRepo
+          })
+        : undefined,
     rotation,
     queuePressure,
     notes

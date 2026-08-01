@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync, utimesSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, utimesSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -198,6 +198,66 @@ describe("M10 ops: integrity, backup, retention", () => {
       expect(live.scannedFiles).toBe(2);
     } finally {
       rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-run retention only scans inside resolved artifactRoot", () => {
+    const root = mkdtempSync(join(tmpdir(), "maa-ret-escape-"));
+    try {
+      const artifactRoot = join(root, "artifacts");
+      mkdirSync(artifactRoot, { recursive: true });
+      const oldTime = new Date("2020-01-01T00:00:00Z");
+
+      const outsideFile = join(root, "outside-old.bin");
+      writeFileSync(outsideFile, "outside");
+      utimesSync(outsideFile, oldTime, oldTime);
+
+      const insideFile = join(artifactRoot, "inside-old.bin");
+      writeFileSync(insideFile, "inside");
+      utimesSync(insideFile, oldTime, oldTime);
+
+      const result = purgeExpiredArtifacts({
+        artifactRoot,
+        retentionDays: 30,
+        dryRun: true,
+        now: new Date("2026-07-27T00:00:00Z")
+      });
+      expect(result.deletedFiles).toBe(1);
+      expect(result.scannedFiles).toBe(1);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("dry-run retention ignores symlink escapes outside artifactRoot", () => {
+    const root = mkdtempSync(join(tmpdir(), "maa-ret-escape-"));
+    const outsideRoot = mkdtempSync(join(tmpdir(), "maa-ret-outside-"));
+    try {
+      const artifactRoot = join(root, "artifacts");
+      mkdirSync(artifactRoot, { recursive: true });
+      const outsideFile = join(outsideRoot, "secret.bin");
+      writeFileSync(outsideFile, "outside");
+      const oldTime = new Date("2020-01-01T00:00:00Z");
+      utimesSync(outsideFile, oldTime, oldTime);
+
+      const linkPath = join(artifactRoot, "escape-link");
+      try {
+        symlinkSync(outsideFile, linkPath);
+      } catch {
+        return;
+      }
+
+      const result = purgeExpiredArtifacts({
+        artifactRoot,
+        retentionDays: 30,
+        dryRun: true,
+        now: new Date("2026-07-27T00:00:00Z")
+      });
+      expect(result.deletedFiles).toBe(0);
+      expect(result.scannedFiles).toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outsideRoot, { recursive: true, force: true });
     }
   });
 });

@@ -1,4 +1,5 @@
 import type { Logger } from "@maa/logging";
+import { resolve } from "node:path";
 import type {
   ProceduralRuleActivationsRepository,
   ProceduralRuleDefinitionsRepository,
@@ -230,7 +231,10 @@ export function createLearningPlaneAdapter(input: {
         databaseSchemaVersion: input.databaseSchemaVersion,
         learningPlaneReachable: reachable,
         repoRoot: input.repoRoot,
-        publishedKnowledgeBridge
+        backupDir: resolve(input.repoRoot, input.rawConfig.MAA_BACKUP_DIR),
+        artifactRetentionDays: input.rawConfig.MAA_ARTIFACT_RETENTION_DAYS,
+        publishedKnowledgeBridge,
+        pkRepo
       });
     },
     bootstrap(request) {

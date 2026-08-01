@@ -1,6 +1,15 @@
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import type { RetentionPurgeResult } from "@maa/contracts";
+
+function isPathInsideRoot(fullPath: string, rootPath: string): boolean {
+  const resolvedFull = resolve(fullPath);
+  const resolvedRoot = resolve(rootPath);
+  return (
+    resolvedFull === resolvedRoot ||
+    resolvedFull.startsWith(resolvedRoot.endsWith(sep) ? resolvedRoot : resolvedRoot + sep)
+  );
+}
 
 /**
  * Delete files under artifactRoot whose mtime is older than retentionDays.
@@ -33,8 +42,10 @@ export function purgeExpiredArtifacts(opts: {
   const cutoffMs = now.getTime() - opts.retentionDays * 24 * 60 * 60 * 1000;
 
   function walk(dir: string): void {
+    if (!isPathInsideRoot(dir, root)) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name);
+      if (!isPathInsideRoot(full, root)) continue;
       if (entry.isDirectory()) {
         walk(full);
         continue;

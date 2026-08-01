@@ -119,6 +119,23 @@ export function publishedKnowledgeRoutes(deps: {
     }
   );
 
+  router.delete(
+    "/v1/integrations/learning-plane/published-knowledge/local-references/:localReferenceId",
+    (req, res, next) => {
+      try {
+        const service = requireService();
+        const body = z
+          .object({ reason: z.string().max(500).optional() })
+          .parse(req.body ?? {});
+        res.json(
+          service.deleteLocalReference(req.params.localReferenceId!, body.reason)
+        );
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
   router.post(
     "/v1/integrations/learning-plane/published-knowledge/local-references/:id/review",
     async (req, res, next) => {

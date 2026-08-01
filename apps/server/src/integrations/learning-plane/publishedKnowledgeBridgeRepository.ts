@@ -587,6 +587,38 @@ export class PublishedKnowledgeBridgeRepository {
       .run(code, message.slice(0, 500), now, outboxId);
   }
 
+  isLocalReferenceTombstoned(ref: PkLocalReferenceRow): boolean {
+    return ref.local_retrieval_eligible === 0 && ref.local_review_state === "disabled";
+  }
+
+  tombstoneLocalReference(id: string): void {
+    this.updateLocalReference(id, {
+      local_retrieval_eligible: 0,
+      local_review_state: "disabled",
+      offline_grace_deadline: null,
+      local_freshness_state: "stale"
+    });
+  }
+
+  countLocalReferences(): number {
+    return (
+      (this.db.prepare(`SELECT COUNT(*) AS c FROM lp_pk_local_references`).get() as
+        | { c: number }
+        | undefined)?.c ?? 0
+    );
+  }
+
+  countTombstonedReferences(): number {
+    return (
+      (this.db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM lp_pk_local_references
+           WHERE local_retrieval_eligible = 0 AND local_review_state = 'disabled'`
+        )
+        .get() as { c: number } | undefined)?.c ?? 0
+    );
+  }
+
   counts(): Record<string, number> {
     const one = (sql: string) =>
       (this.db.prepare(sql).get() as { c: number } | undefined)?.c ?? 0;
@@ -597,6 +629,7 @@ export class PublishedKnowledgeBridgeRepository {
       eligibleReferences: one(
         `SELECT COUNT(*) AS c FROM lp_pk_local_references WHERE local_retrieval_eligible = 1`
       ),
+      tombstonedReferences: this.countTombstonedReferences(),
       useTraces: one(`SELECT COUNT(*) AS c FROM lp_pk_use_traces`),
       influenceTraces: one(`SELECT COUNT(*) AS c FROM lp_pk_influence_traces`),
       pendingOutbox: one(

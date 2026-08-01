@@ -138,5 +138,13 @@ export type LearningPlaneStatusResponse = {
     outboxPermanentFailure: number;
     oldestPendingAgeSeconds: number | null;
   };
+  recovery?: {
+    lastBackupAt: string | null;
+    lastBackupPathDisplay: string | null;
+    lastIntegrityOk: boolean | null;
+    retentionDaysConfigured: number;
+    localReferenceCount: number;
+    tombstoneOrDeletedReferenceCount: number;
+  };
   notes: string[];
 };

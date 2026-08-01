@@ -487,6 +487,41 @@ export class PublishedKnowledgeBridgeService {
     return this.deps.repo.listLocalReferences();
   }
 
+  deleteLocalReference(
+    localReferenceId: string,
+    reason?: string
+  ): { ok: true; idempotent: boolean; localReferenceId: string } {
+    requireBridge(
+      this.deps.config,
+      this.deps.config.publicationBridgeEnabled,
+      "Published-knowledge bridge is disabled."
+    );
+    if (!this.tablesPresent()) {
+      throw new AppError({
+        code: "INVALID_STATE_TRANSITION",
+        message: "Published-knowledge bridge tables missing (migration 0018)."
+      });
+    }
+    const ref = this.deps.repo.getLocalReference(localReferenceId);
+    if (!ref) {
+      return { ok: true, idempotent: true, localReferenceId };
+    }
+    const alreadyTombstoned = this.deps.repo.isLocalReferenceTombstoned(ref);
+    if (!alreadyTombstoned) {
+      this.deps.repo.tombstoneLocalReference(localReferenceId);
+      this.deps.adapterRepo.recordProcessingEvent({
+        eventKind: "learning_plane.local_reference_deleted",
+        detail: {
+          localReferenceId,
+          publishedKnowledgeId: ref.published_knowledge_id,
+          packageSha256: ref.package_sha256,
+          ...(reason ? { reason: reason.slice(0, 500) } : {})
+        }
+      });
+    }
+    return { ok: true, idempotent: alreadyTombstoned, localReferenceId };
+  }
+
   assembleExternalKnowledgeForRun(input: {
     runId: string;
     query?: string;
