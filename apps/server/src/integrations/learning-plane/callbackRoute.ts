@@ -5,6 +5,7 @@ import {
   WorkflowFeedbackResolutionSubmittedPayloadV1Schema
 } from "@learning-plane/contracts";
 import { verifyLearningPlaneDeliverySignature } from "@learning-plane/client";
+import { callbackVerifyOptions } from "./callbackVerification.js";
 import type { LearningPlaneAdapterRepository } from "./adapterRepository.js";
 import type { LearningPlaneAdapterConfig } from "./config.js";
 import type { LearningPlaneSecretStore } from "./secretStore.js";
@@ -103,7 +104,7 @@ export function learningPlaneCallbackRoutes(deps: CallbackRouteDeps): Router {
       const notification = parsedNotification.data;
 
       const verified = verifyLearningPlaneDeliverySignature({
-        verificationSecret: secret.callbackVerificationSecret,
+        ...callbackVerifyOptions(secret),
         expectedTargetAgentId: config.agentId,
         rawBody,
         headers: {

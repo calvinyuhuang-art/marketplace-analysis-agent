@@ -33,6 +33,8 @@ export type LpAdapterSettingsRow = {
   updated_at: string;
 };
 
+export type RotationStatus = "idle" | "api_key_overlap" | "hmac_overlap" | "degraded";
+
 export type LearningPlaneSecretFile = {
   schemaVersion: "maa.learning-plane-adapter.secrets.v1";
   agentId: string;
@@ -43,6 +45,13 @@ export type LearningPlaneSecretFile = {
   callbackVerificationSecret: string;
   createdAt: string;
   updatedAt: string;
+  previousCredentialId?: string;
+  previousAgentApiKey?: string;
+  previousCallbackKeyId?: string;
+  previousCallbackVerificationSecret?: string;
+  acceptedCallbackKeyIds?: string[];
+  rotationStatus?: RotationStatus;
+  rotationOverlapExpiresAt?: string;
 };
 
 export type BootstrapRequest = {
@@ -114,5 +123,20 @@ export type LearningPlaneStatusResponse = {
     externalRetrievalEnabled?: boolean;
   };
   publishedKnowledge?: Record<string, unknown>;
+  rotation?: {
+    status: string;
+    credentialId: string | null;
+    previousCredentialId: string | null;
+    callbackKeyId: string | null;
+    previousCallbackKeyId: string | null;
+    acceptedCallbackKeyIds: string[];
+    overlapExpiresAt: string | null;
+  };
+  queuePressure?: {
+    outboxPending: number;
+    outboxRetryScheduled: number;
+    outboxPermanentFailure: number;
+    oldestPendingAgeSeconds: number | null;
+  };
   notes: string[];
 };

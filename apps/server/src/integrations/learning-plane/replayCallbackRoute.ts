@@ -5,6 +5,7 @@ import {
   ReplayJobNotificationSchema
 } from "@learning-plane/contracts";
 import { verifyReplayJobSignature } from "@learning-plane/client";
+import { callbackVerifyOptions } from "./callbackVerification.js";
 import type { LearningPlaneAdapterConfig } from "./config.js";
 import type { LearningPlaneSecretStore } from "./secretStore.js";
 import type { LearningPlaneAdapterRepository } from "./adapterRepository.js";
@@ -94,7 +95,7 @@ export function replayCallbackRoutes(deps: ReplayCallbackDeps): Router {
         const notification = parsed.data;
 
         const verified = verifyReplayJobSignature({
-          verificationSecret: secret.callbackVerificationSecret,
+          ...callbackVerifyOptions(secret),
           expectedTargetAgentId: config.agentId,
           rawBody,
           headers: {

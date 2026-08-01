@@ -6,7 +6,7 @@ import {
   writeFileSync
 } from "node:fs";
 import { dirname } from "node:path";
-import type { LearningPlaneSecretFile } from "./contracts.js";
+import type { LearningPlaneSecretFile, RotationStatus } from "./contracts.js";
 
 const SECRET_SCHEMA = "maa.learning-plane-adapter.secrets.v1" as const;
 
@@ -61,14 +61,19 @@ export class LearningPlaneSecretStore {
     if (value.agentApiKey.length < 32 || value.callbackVerificationSecret.length < 32) {
       throw new Error("Learning Plane adapter secret material is incomplete.");
     }
-    return value as LearningPlaneSecretFile;
+    return {
+      ...(value as LearningPlaneSecretFile),
+      rotationStatus: (value.rotationStatus as RotationStatus | undefined) ?? undefined
+    };
   }
 
-  save(input: Omit<LearningPlaneSecretFile, "schemaVersion" | "createdAt" | "updatedAt"> & {
-    createdAt?: string;
-  }): LearningPlaneSecretFile {
-    const now = new Date().toISOString();
-    const existing = this.exists() ? this.load() : null;
+  private buildPayload(
+    input: Omit<LearningPlaneSecretFile, "schemaVersion" | "createdAt" | "updatedAt"> & {
+      createdAt?: string;
+    },
+    existing: LearningPlaneSecretFile | null,
+    now: string
+  ): LearningPlaneSecretFile {
     const payload: LearningPlaneSecretFile = {
       schemaVersion: SECRET_SCHEMA,
       agentId: input.agentId,
@@ -80,6 +85,126 @@ export class LearningPlaneSecretStore {
       createdAt: input.createdAt ?? existing?.createdAt ?? now,
       updatedAt: now
     };
+    if (input.previousCredentialId !== undefined) {
+      payload.previousCredentialId = input.previousCredentialId;
+    } else if (existing?.previousCredentialId !== undefined) {
+      payload.previousCredentialId = existing.previousCredentialId;
+    }
+    if (input.previousAgentApiKey !== undefined) {
+      payload.previousAgentApiKey = input.previousAgentApiKey;
+    } else if (existing?.previousAgentApiKey !== undefined) {
+      payload.previousAgentApiKey = existing.previousAgentApiKey;
+    }
+    if (input.previousCallbackKeyId !== undefined) {
+      payload.previousCallbackKeyId = input.previousCallbackKeyId;
+    } else if (existing?.previousCallbackKeyId !== undefined) {
+      payload.previousCallbackKeyId = existing.previousCallbackKeyId;
+    }
+    if (input.previousCallbackVerificationSecret !== undefined) {
+      payload.previousCallbackVerificationSecret = input.previousCallbackVerificationSecret;
+    } else if (existing?.previousCallbackVerificationSecret !== undefined) {
+      payload.previousCallbackVerificationSecret = existing.previousCallbackVerificationSecret;
+    }
+    if (input.acceptedCallbackKeyIds !== undefined) {
+      payload.acceptedCallbackKeyIds = input.acceptedCallbackKeyIds;
+    } else if (existing?.acceptedCallbackKeyIds !== undefined) {
+      payload.acceptedCallbackKeyIds = existing.acceptedCallbackKeyIds;
+    }
+    if (input.rotationStatus !== undefined) {
+      payload.rotationStatus = input.rotationStatus;
+    } else if (existing?.rotationStatus !== undefined) {
+      payload.rotationStatus = existing.rotationStatus;
+    }
+    if (input.rotationOverlapExpiresAt !== undefined) {
+      payload.rotationOverlapExpiresAt = input.rotationOverlapExpiresAt;
+    } else if (existing?.rotationOverlapExpiresAt !== undefined) {
+      payload.rotationOverlapExpiresAt = existing.rotationOverlapExpiresAt;
+    }
+    return payload;
+  }
+
+  save(input: Omit<LearningPlaneSecretFile, "schemaVersion" | "createdAt" | "updatedAt"> & {
+    createdAt?: string;
+  }): LearningPlaneSecretFile {
+    const now = new Date().toISOString();
+    const existing = this.exists() ? this.load() : null;
+    const payload = this.buildPayload(input, existing, now);
+    this.writePayload(payload);
+    return payload;
+  }
+
+  applyRotationUpdate(
+    update: Partial<
+      Pick<
+        LearningPlaneSecretFile,
+        | "credentialId"
+        | "agentApiKey"
+        | "callbackKeyId"
+        | "callbackVerificationSecret"
+        | "previousCredentialId"
+        | "previousAgentApiKey"
+        | "previousCallbackKeyId"
+        | "previousCallbackVerificationSecret"
+        | "acceptedCallbackKeyIds"
+        | "rotationStatus"
+        | "rotationOverlapExpiresAt"
+      >
+    > & {
+      clearPreviousCredential?: boolean;
+      clearPreviousCallback?: boolean;
+    }
+  ): LearningPlaneSecretFile {
+    const existing = this.load();
+    if (!existing) {
+      throw new Error("Learning Plane adapter secret file is missing.");
+    }
+    const now = new Date().toISOString();
+    const merged: Omit<LearningPlaneSecretFile, "schemaVersion" | "createdAt" | "updatedAt"> = {
+      agentId: existing.agentId,
+      learningPlaneBaseUrl: existing.learningPlaneBaseUrl,
+      credentialId: update.credentialId ?? existing.credentialId,
+      callbackKeyId: update.callbackKeyId ?? existing.callbackKeyId,
+      agentApiKey: update.agentApiKey ?? existing.agentApiKey,
+      callbackVerificationSecret:
+        update.callbackVerificationSecret ?? existing.callbackVerificationSecret,
+      previousCredentialId: update.clearPreviousCredential
+        ? undefined
+        : update.previousCredentialId !== undefined
+          ? update.previousCredentialId
+          : existing.previousCredentialId,
+      previousAgentApiKey: update.clearPreviousCredential
+        ? undefined
+        : update.previousAgentApiKey !== undefined
+          ? update.previousAgentApiKey
+          : existing.previousAgentApiKey,
+      previousCallbackKeyId: update.clearPreviousCallback
+        ? undefined
+        : update.previousCallbackKeyId !== undefined
+          ? update.previousCallbackKeyId
+          : existing.previousCallbackKeyId,
+      previousCallbackVerificationSecret: update.clearPreviousCallback
+        ? undefined
+        : update.previousCallbackVerificationSecret !== undefined
+          ? update.previousCallbackVerificationSecret
+          : existing.previousCallbackVerificationSecret,
+      acceptedCallbackKeyIds: update.clearPreviousCallback
+        ? undefined
+        : update.acceptedCallbackKeyIds !== undefined
+          ? update.acceptedCallbackKeyIds
+          : existing.acceptedCallbackKeyIds,
+      rotationStatus: update.rotationStatus ?? existing.rotationStatus,
+      rotationOverlapExpiresAt:
+        update.rotationOverlapExpiresAt !== undefined
+          ? update.rotationOverlapExpiresAt
+          : existing.rotationOverlapExpiresAt
+    };
+    const payload = this.buildPayload(merged, null, now);
+    payload.createdAt = existing.createdAt;
+    this.writePayload(payload);
+    return payload;
+  }
+
+  private writePayload(payload: LearningPlaneSecretFile): void {
     mkdirSync(dirname(this.secretFilePath), { recursive: true });
     writeFileSync(this.secretFilePath, JSON.stringify(payload, null, 2), {
       encoding: "utf8",
@@ -90,7 +215,6 @@ export class LearningPlaneSecretStore {
     } catch {
       // Windows may ignore POSIX mode; best-effort only.
     }
-    return payload;
   }
 
   static redactForLogs(value: unknown): unknown {

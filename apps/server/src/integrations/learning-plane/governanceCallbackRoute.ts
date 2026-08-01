@@ -5,6 +5,7 @@ import {
   GovernanceDecisionNotificationSchema
 } from "@learning-plane/contracts";
 import { verifyGovernanceDecisionSignature } from "@learning-plane/client";
+import { callbackVerifyOptions } from "./callbackVerification.js";
 import type { LearningPlaneAdapterConfig } from "./config.js";
 import type { LearningPlaneSecretStore } from "./secretStore.js";
 import type { LearningPlaneAdapterRepository } from "./adapterRepository.js";
@@ -98,7 +99,7 @@ export function governanceCallbackRoutes(deps: GovernanceCallbackDeps): Router {
         const notification = parsed.data;
 
         const verified = verifyGovernanceDecisionSignature({
-          verificationSecret: secret.callbackVerificationSecret,
+          ...callbackVerifyOptions(secret),
           expectedTargetAgentId: config.agentId,
           rawBody,
           headers: {
