@@ -32,8 +32,8 @@ function enabledPkConfig(secretFilePath: string): LearningPlaneAdapterConfig {
     healthReportIntervalSeconds: 60,
     requestTimeoutMs: 10000,
     secretFilePath,
-    publicHost: "127.0.0.1",
-    publicPort: 4310,
+    maaHost: "127.0.0.1",
+    maaPort: 4310,
     governanceBridgeEnabled: false,
     governancePublishEnabled: false,
     governanceReceiveEnabled: false,
@@ -55,7 +55,6 @@ function enabledPkConfig(secretFilePath: string): LearningPlaneAdapterConfig {
     useReceiptEnabled: false,
     influenceReceiptEnabled: false,
     challengeEnabled: true,
-    freshnessReconcileEnabled: true,
     pkLifecycleReconcileEnabled: true,
     offlineGraceHours: 24
   };
@@ -136,7 +135,7 @@ describe("LP8-I6d retrieval hard filters (MAA)", () => {
   });
 
   it("excludes challenged refs from eligible SQL list", () => {
-    const { dir, db, repo, service, database } = openPkDb();
+    const { dir, repo, service, database } = openPkDb();
     try {
       const { bodyJson, packageSha256 } = packageBody("challenged content");
       repo.insertLocalReference(
@@ -167,7 +166,7 @@ describe("LP8-I6d retrieval hard filters (MAA)", () => {
   });
 
   it("excludes revoked and superseded catalog_state refs", () => {
-    const { dir, db, repo, service, database } = openPkDb();
+    const { dir, repo, service, database } = openPkDb();
     try {
       for (const [id, catalogState] of [
         ["ref_revoked", "revoked"],
@@ -273,7 +272,7 @@ describe("LP8-I6d retrieval hard filters (MAA)", () => {
   });
 
   it("withholds instruction-authority content in assembled item", () => {
-    const { dir, db, repo, service, database } = openPkDb();
+    const { dir, repo, service, database } = openPkDb();
     try {
       const localReferenceId = newPkId("pkref");
       const { bodyJson, packageSha256 } = packageBody(

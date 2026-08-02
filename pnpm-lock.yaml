@@ -133,6 +133,9 @@ importers:
       '@maa/wiki':
         specifier: workspace:*
         version: link:../../packages/wiki
+      better-sqlite3:
+        specifier: ^11.7.0
+        version: 11.10.0
       cors:
         specifier: ^2.8.5
         version: 2.8.6
@@ -158,6 +161,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.3
+      '@types/better-sqlite3':
+        specifier: ^7.6.12
+        version: 7.6.13
       supertest:
         specifier: ^7.0.0
         version: 7.2.2
@@ -1112,13 +1118,13 @@ packages:
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
   '@learning-plane/client@file:vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz':
-    resolution: {integrity: sha512-KDfgM1GnRND4052oXOIZNw+pTE0XMBpqM46jLnCP7kT0yHoKScvnAScNP1vPG+hv4jlJiJso35SFGLLS/KpLQw==, tarball: file:vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz}
+    resolution: {integrity: sha512-mE9nFJbPS24LVhQHAA9J8N1XEJ5+F/6Ko47Iq3RJWYC35OQAfw2VBAXkW9ksPWEBvmNlq+Zgld/hqQVkoSfmFw==, tarball: file:vendor/learning-plane/artifacts/learning-plane-client-0.8.2.tgz}
     version: 0.8.2
     peerDependencies:
-      '@learning-plane/contracts': file:C:\Tools and Agents\Marketplac_Analysis_Agent-lp8-i5c\vendor\learning-plane\artifacts\learning-plane-contracts-0.8.2.tgz
+      '@learning-plane/contracts': 0.8.2
 
   '@learning-plane/contracts@file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz':
-    resolution: {integrity: sha512-9vwAgR7bQhKZM3K1G/CrYdYAD6CxdUV+1fubH6Lo3ZU8qU0WHpObdGlGyl+ke6fm7xiJjN0vW/1PV8QiEKKbHQ==, tarball: file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz}
+    resolution: {integrity: sha512-8bM3NZ2D/E0Y+jPZnktpB6p1XfqrcnbNA5M5dtkIbJI4f2GA2ZZC8TWb0kUD71Vy/1L0g//3P2jxmo0Mh6OqQQ==, tarball: file:vendor/learning-plane/artifacts/learning-plane-contracts-0.8.2.tgz}
     version: 0.8.2
 
   '@noble/hashes@1.8.0':
